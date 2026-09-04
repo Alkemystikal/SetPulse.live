@@ -1,0 +1,202 @@
+{
+  "performers": [
+    {
+      "name": "Morgan",
+      "started_video_t": 988.0,
+      "ended_video_t": 1578.0,
+      "chat": {
+        "pos": 82,
+        "neg": 39,
+        "neu": 141,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Bashar",
+      "started_video_t": 1582.0,
+      "ended_video_t": 2177.0,
+      "chat": {
+        "pos": 36,
+        "neg": 14,
+        "neu": 56,
+        "format": 0
+      },
+      "mentions_gated": 7
+    },
+    {
+      "name": "Mister E",
+      "started_video_t": 1584.0,
+      "ended_video_t": 1872.0,
+      "chat": {
+        "pos": 40,
+        "neg": 19,
+        "neu": 49,
+        "format": 0
+      },
+      "mentions_gated": 5
+    },
+    {
+      "name": "Shane Nelson",
+      "started_video_t": 2181.0,
+      "ended_video_t": 2475.0,
+      "chat": {
+        "pos": 58,
+        "neg": 15,
+        "neu": 63,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Jackson",
+      "started_video_t": 2480.0,
+      "ended_video_t": 2773.0,
+      "chat": {
+        "pos": 40,
+        "neg": 23,
+        "neu": 70,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Brady",
+      "started_video_t": 2778.0,
+      "ended_video_t": 3069.0,
+      "chat": {
+        "pos": 44,
+        "neg": 29,
+        "neu": 56,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Lyndsay Roth",
+      "started_video_t": 3072.0,
+      "ended_video_t": 3366.0,
+      "chat": {
+        "pos": 32,
+        "neg": 22,
+        "neu": 64,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Rhonda Lee Kits",
+      "started_video_t": 3369.0,
+      "ended_video_t": 3662.0,
+      "chat": {
+        "pos": 48,
+        "neg": 40,
+        "neu": 91,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Corky Gardner",
+      "started_video_t": 3664.0,
+      "ended_video_t": 3986.0,
+      "chat": {
+        "pos": 54,
+        "neg": 25,
+        "neu": 67,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Joshua",
+      "started_video_t": 3988.0,
+      "ended_video_t": 4292.0,
+      "chat": {
+        "pos": 51,
+        "neg": 48,
+        "neu": 109,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Jimbo",
+      "started_video_t": 4293.0,
+      "ended_video_t": 4304.0,
+      "chat": {
+        "pos": 2,
+        "neg": 1,
+        "neu": 4,
+        "format": 0
+      },
+      "mentions_gated": 119
+    },
+    {
+      "name": "Ivan",
+      "started_video_t": 5060.0,
+      "ended_video_t": 5390.0,
+      "chat": {
+        "pos": 66,
+        "neg": 20,
+        "neu": 96,
+        "format": 0
+      },
+      "mentions_gated": 5
+    },
+    {
+      "name": "Semele",
+      "started_video_t": 5394.0,
+      "ended_video_t": 5754.0,
+      "chat": {
+        "pos": 74,
+        "neg": 40,
+        "neu": 115,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Free",
+      "started_video_t": 5757.0,
+      "ended_video_t": 6132.0,
+      "chat": {
+        "pos": 64,
+        "neg": 45,
+        "neu": 140,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Dan Steeby",
+      "started_video_t": 6149.0,
+      "ended_video_t": 6578.0,
+      "chat": {
+        "pos": 57,
+        "neg": 40,
+        "neu": 135,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Bender",
+      "started_video_t": 6579.0,
+      "ended_video_t": 6864.0,
+      "chat": {
+        "pos": 63,
+        "neg": 28,
+        "neu": 86,
+        "format": 0
+      },
+      "mentions_gated": 0
+    }
+  ],
+  "room": {
+    "pos": 853,
+    "neg": 471,
+    "neu": 1404,
+    "format": 0
+  }
+}

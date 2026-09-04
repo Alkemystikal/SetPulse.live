@@ -1,0 +1,226 @@
+{
+  "performers": [
+    {
+      "name": "Chino LaForge",
+      "started_video_t": 155.0,
+      "ended_video_t": 3562.0,
+      "chat": {
+        "pos": 51,
+        "neg": 38,
+        "neu": 87,
+        "format": 0
+      },
+      "mentions_gated": 59
+    },
+    {
+      "name": "Jose Raymond",
+      "started_video_t": 535.0,
+      "ended_video_t": 798.0,
+      "chat": {
+        "pos": 15,
+        "neg": 4,
+        "neu": 21,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Rick Jaeger",
+      "started_video_t": 835.0,
+      "ended_video_t": 1169.0,
+      "chat": {
+        "pos": 41,
+        "neg": 24,
+        "neu": 76,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Dan Steeby",
+      "started_video_t": 1250.0,
+      "ended_video_t": 1564.0,
+      "chat": {
+        "pos": 53,
+        "neg": 26,
+        "neu": 102,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Morgen Thomasian",
+      "started_video_t": 1567.0,
+      "ended_video_t": 1803.0,
+      "chat": {
+        "pos": 34,
+        "neg": 35,
+        "neu": 108,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Bashar",
+      "started_video_t": 1835.0,
+      "ended_video_t": 2147.0,
+      "chat": {
+        "pos": 51,
+        "neg": 45,
+        "neu": 102,
+        "format": 0
+      },
+      "mentions_gated": 7
+    },
+    {
+      "name": "Shane Nelson",
+      "started_video_t": 2150.0,
+      "ended_video_t": 2445.0,
+      "chat": {
+        "pos": 43,
+        "neg": 32,
+        "neu": 90,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Jackson Babine",
+      "started_video_t": 2479.0,
+      "ended_video_t": 2985.0,
+      "chat": {
+        "pos": 84,
+        "neg": 86,
+        "neu": 174,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Joel Hewins",
+      "started_video_t": 2987.0,
+      "ended_video_t": 3162.0,
+      "chat": {
+        "pos": 34,
+        "neg": 40,
+        "neu": 58,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Mister E",
+      "started_video_t": 3165.0,
+      "ended_video_t": 3472.0,
+      "chat": {
+        "pos": 67,
+        "neg": 51,
+        "neu": 171,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Jimbo",
+      "started_video_t": 3563.0,
+      "ended_video_t": 3869.0,
+      "chat": {
+        "pos": 51,
+        "neg": 36,
+        "neu": 82,
+        "format": 0
+      },
+      "mentions_gated": 182
+    },
+    {
+      "name": "Joshua",
+      "started_video_t": 3870.0,
+      "ended_video_t": 4033.0,
+      "chat": {
+        "pos": 45,
+        "neg": 21,
+        "neu": 75,
+        "format": 0
+      },
+      "mentions_gated": 8
+    },
+    {
+      "name": "Earl",
+      "started_video_t": 4040.0,
+      "ended_video_t": 4409.0,
+      "chat": {
+        "pos": 61,
+        "neg": 57,
+        "neu": 139,
+        "format": 0
+      },
+      "mentions_gated": 14
+    },
+    {
+      "name": "Ivan",
+      "started_video_t": 4413.0,
+      "ended_video_t": 4767.0,
+      "chat": {
+        "pos": 53,
+        "neg": 34,
+        "neu": 123,
+        "format": 0
+      },
+      "mentions_gated": 15
+    },
+    {
+      "name": "Sasha",
+      "started_video_t": 4769.0,
+      "ended_video_t": 5129.0,
+      "chat": {
+        "pos": 61,
+        "neg": 32,
+        "neu": 177,
+        "format": 0
+      },
+      "mentions_gated": 1
+    },
+    {
+      "name": "Mir Mir",
+      "started_video_t": 5133.0,
+      "ended_video_t": 5502.0,
+      "chat": {
+        "pos": 60,
+        "neg": 58,
+        "neu": 198,
+        "format": 0
+      },
+      "mentions_gated": 5
+    },
+    {
+      "name": "Craig Bradley",
+      "started_video_t": 5503.0,
+      "ended_video_t": 5949.0,
+      "chat": {
+        "pos": 75,
+        "neg": 48,
+        "neu": 130,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Dwayne",
+      "started_video_t": 5950.0,
+      "ended_video_t": 7277.0,
+      "chat": {
+        "pos": 181,
+        "neg": 88,
+        "neu": 371,
+        "format": 0
+      },
+      "mentions_gated": 0
+    }
+  ],
+  "room": {
+    "pos": 1074,
+    "neg": 766,
+    "neu": 2319,
+    "format": 0
+  }
+}
