@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SetPulse — Live order</title>
+<style>
+  :root { --ink:#f0eafa; --orange:#ff7a00; --green:#39ff14; --card:rgba(255,255,255,0.06); }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; }
+  body {
+    background: radial-gradient(circle at center, #3a1f5d 0%, #1a0f2e 45%, #000000 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,sans-serif; padding:16px 16px 40px;
+  }
+  h1 { font-size:1.3rem; margin:0 0 6px; color:var(--orange); }
+  .sub { color:var(--green); font-size:.92rem; margin-top:0; }
+  .now { background:rgba(57,255,20,0.1); border:1px solid rgba(57,255,20,0.35); border-radius:16px; padding:14px 16px; margin-top:16px; }
+  .now .label { font-size:.72rem; color:#8a7ba0; text-transform:uppercase; letter-spacing:.06em; }
+  .now .name { font-size:1.4rem; font-weight:800; color:var(--green); }
+  .next { color:#b8a9cc; font-size:.9rem; margin-top:4px; }
+  .row { background:var(--card); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:10px 14px; margin-top:8px; display:flex; align-items:center; gap:10px; }
+  .row .n { font-weight:800; color:#8a7ba0; width:28px; text-align:center; }
+  .row .who { flex:1; font-weight:700; }
+  .row .status { font-size:.72rem; padding:2px 8px; border-radius:8px; background:rgba(255,255,255,0.08); color:#b8a9cc; }
+  .row.on_stage { border-color:rgba(57,255,20,0.4); }
+  .row.on_stage .status { background:rgba(57,255,20,0.18); color:var(--green); }
+  h2 { font-size:1rem; color:var(--orange); margin:24px 0 8px; }
+  a.back { display:inline-block; margin-top:24px; color:#c9a6ff; font-size:.86rem; }
+  .empty { color:#8a7ba0; margin-top:12px; }
+</style>
+</head>
+<body>
+  <h1>Live order</h1>
+  <p class="sub">Comedy Simulator — updates automatically.</p>
+
+  <div class="now">
+    <div class="label">On stage</div>
+    <div class="name" id="nowName">—</div>
+    <div class="next" id="nextName"></div>
+  </div>
+
+  <h2>Lineup</h2>
+  <div id="lineup"></div>
+
+  <a class="back" href="list.html">&larr; Get on the list</a>
+
+<script>
+function feedUrl() {
+  const q = new URLSearchParams(location.search).get("feed");
+  return q || localStorage.getItem("setpulse_webapp") || "";
+}
+
+async function load() {
+  const feed = feedUrl();
+  if (!feed) {
+    document.getElementById("lineup").innerHTML = '<p class="empty">Add ?feed=YOUR_WEB_APP_URL to this page.</p>';
+    return;
+  }
+  try {
+    const res = await fetch(feed + "?format=full");
+    const j = await res.json();
+    const obs = j.obs || {};
+    document.getElementById("nowName").textContent = obs.now || "—";
+    document.getElementById("nextName").textContent = obs.next ? ("Next: " + obs.next) : "";
+    const rows = (j.lineup || []).filter(r => r.name);
+    document.getElementById("lineup").innerHTML = rows.length
+      ? rows.map(r => `
+        <div class="row ${r.status === 'on_stage' ? 'on_stage' : ''}">
+          <div class="n">${r.order || ''}</div>
+          <div class="who">${r.name}${r.note ? '<div class="next" style="margin-top:2px">' + r.note + '</div>' : ''}</div>
+          <div class="status">${r.status || 'waiting'}</div>
+        </div>`).join("")
+      : '<p class="empty">List is empty.</p>';
+  } catch (e) {
+    document.getElementById("lineup").innerHTML = '<p class="empty">Could not load the lineup.</p>';
+  }
+}
+
+load();
+setInterval(load, 8000);
+</script>
+</body>
+</html>

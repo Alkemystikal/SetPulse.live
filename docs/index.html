@@ -5,34 +5,68 @@
 <title>SetPulse</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  html, body {
-    height: 100%;
-    margin: 0;
-  }
+  html, body { height: 100%; margin: 0; }
   body {
     font-family: -apple-system, sans-serif;
-    color: #ff7a00;
+    color: #f0eafa;
     background: radial-gradient(circle at center, #3a1f5d 0%, #1a0f2e 45%, #000000 100%);
     background-attachment: fixed;
     min-height: 100vh;
   }
-  .wrap { max-width: 640px; margin: 0 auto; padding: 40px 16px; }
-  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 40px 16px 80px; }
+  h1 { font-size: 1.8rem; margin-bottom: 4px; color: #ff7a00; }
   .sub { color: #39ff14; margin-top: 0; }
-  ul { line-height: 2.1; padding-left: 1.2rem; }
+  h2 { font-size: 1.05rem; color: #ff7a00; margin: 32px 0 10px; }
   a { color: #c9a6ff; }
   code { background: rgba(255, 255, 255, 0.08); color: #e0d4f5; padding: 2px 6px; border-radius: 4px; }
+
+  .tiles { display: flex; flex-direction: column; gap: 10px; }
+  .tile { display: block; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 14px 16px; text-decoration: none; }
+  .tile .t { font-weight: 700; font-size: 1.05rem; color: #f0eafa; }
+  .tile .d { color: #b8a9cc; font-size: .85rem; margin-top: 2px; }
+  .tile.go .t { color: #ff7a00; }
+  .tile.order .t { color: #39ff14; }
+
+  ul.plain { line-height: 2.1; padding-left: 1.2rem; }
+  #pastShows { color: #8a7ba0; }
 </style>
 </head>
 <body>
   <div class="wrap">
     <h1>SetPulse</h1>
-    <p class="sub">Chat archive and sentiment analysis for live comedy shows.</p>
-    <ul>
-      <li><a href="/s/comedy-simulator/2026-08-31/">Comedy Simulator &mdash; 2026-08-31</a></li>
-      <li><a href="/s/comedy-simulator/2026-08-17/">Comedy Simulator &mdash; 2026-08-17</a></li>
-    </ul>
+    <p class="sub">Live comedy night signups, live order, and chat/sentiment archive.</p>
+
+    <div class="tiles">
+      <a class="tile go" href="s/comedy-simulator/list.html">
+        <div class="t">Get on the list</div>
+        <div class="d">Comics: claim a spot for tonight's show.</div>
+      </a>
+      <a class="tile order" href="s/comedy-simulator/order.html">
+        <div class="t">Live show order</div>
+        <div class="d">Who's on stage, who's next, and the current lineup.</div>
+      </a>
+    </div>
+
+    <h2>Past shows</h2>
+    <ul class="plain" id="pastShows">Loading…</ul>
     <p class="sub">Machine-readable index: <code>/s/comedy-simulator/nights.json</code></p>
+
+    <h2>Elsewhere</h2>
+    <ul class="plain">
+      <li><a href="https://www.youtube.com/@ComedySimulator">YouTube — The Comedy Simulator</a></li>
+      <li><a href="https://www.instagram.com/chinobrah">Instagram — @chinobrah</a></li>
+    </ul>
   </div>
+
+<script>
+fetch('s/comedy-simulator/nights.json').then(r => r.json()).then(nights => {
+  const el = document.getElementById('pastShows');
+  if (!nights.length) { el.textContent = 'None archived yet.'; return; }
+  el.innerHTML = nights.slice().reverse().map(n =>
+    `<li><a href="s/comedy-simulator/${n.date}/">${n.title || 'Comedy Simulator'} &mdash; ${n.date}</a></li>`
+  ).join('');
+}).catch(() => { document.getElementById('pastShows').textContent = 'Could not load past shows.'; });
+</script>
 </body>
 </html>
