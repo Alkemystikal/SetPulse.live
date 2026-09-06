@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SetPulse — Get on the list</title>
+<style>
+  :root { --bg:#0e0f12; --card:#1a1c22; --ink:#f4f4f5; --mut:#9aa3af; --go:#e8c547; --on:#3dd68c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,sans-serif; padding:16px 16px 36px; }
+  h1 { font-size:1.3rem; margin:0 0 6px; letter-spacing:-.03em; }
+  .mut { color:var(--mut); font-size:.92rem; line-height:1.4; }
+  .card { background:var(--card); border-radius:16px; padding:16px; margin-top:14px; }
+  label { display:block; font-size:.78rem; color:var(--mut); margin:0 0 6px; }
+  input { width:100%; min-height:46px; border:0; border-radius:12px; padding:0 12px; font-size:1rem; margin-bottom:12px; }
+  button { width:100%; min-height:48px; border:0; border-radius:12px; font-weight:700; font-size:1.05rem; background:var(--go); color:#111; }
+  button.ghost { background:#2a2e36; color:#fff; margin-top:8px; }
+  .ok { color:var(--on); font-weight:700; min-height:1.4em; }
+  footer { margin-top:22px; color:#6b7280; font-size:.72rem; text-align:center; line-height:1.4; }
+</style>
+</head>
+<body>
+  <h1>Get on the list</h1>
+  <p class="mut">Comedy Simulator. Don’t flag the host. Type the name you want called. The MC deck picks it up.</p>
+
+  <div class="card">
+    <label>Stage name</label>
+    <input id="name" placeholder="Name as you want it called" autocomplete="name">
+
+    <label>Chat name (optional)</label>
+    <input id="chat" placeholder="@handle on YouTube chat" autocomplete="username">
+
+    <label>Note (optional)</label>
+    <input id="note" placeholder="first time / 5 min" maxlength="80">
+
+    <button id="join">Put me on the list</button>
+    <button class="ghost" id="share">Share this link</button>
+    <p class="ok" id="status"></p>
+  </div>
+
+  <footer>SetPulse · live comedy signup</footer>
+
+<script>
+const DEFAULT_SHOW = "Comedy Simulator";
+const status = document.getElementById("status");
+
+function endpoint() {
+  const q = new URLSearchParams(location.search).get("feed");
+  return q || localStorage.getItem("setpulse_webapp") || "";
+}
+
+document.getElementById("join").onclick = async () => {
+  const name = document.getElementById("name").value.trim();
+  if (!name) { status.textContent = "Need a name."; return; }
+  const feed = endpoint();
+  if (!feed) {
+    status.textContent = "Producer: add ?feed=YOUR_WEB_APP_URL to this page.";
+    return;
+  }
+  status.textContent = "Sending…";
+  const body = {
+    action: "queue",
+    name,
+    chat_name: document.getElementById("chat").value.trim(),
+    note: document.getElementById("note").value.trim(),
+    show: DEFAULT_SHOW,
+    source: "list",
+    channel: "list_page"
+  };
+  try {
+    const res = await fetch(feed, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const j = await res.json();
+    if (j.ok) {
+      status.textContent = "You're on the list.";
+      document.getElementById("name").value = "";
+      document.getElementById("chat").value = "";
+      document.getElementById("note").value = "";
+    } else {
+      status.textContent = j.error || "Could not add you.";
+    }
+  } catch (e) {
+    status.textContent = "Network miss. Try again.";
+  }
+};
+
+document.getElementById("share").onclick = async () => {
+  const url = location.href;
+  if (navigator.share) {
+    try { await navigator.share({ title: "Get on the list", url }); return; } catch (e) {}
+  }
+  try { await navigator.clipboard.writeText(url); status.textContent = "Link copied."; }
+  catch { status.textContent = url; }
+};
+</script>
+</body>
+</html>
