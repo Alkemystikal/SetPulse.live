@@ -33,6 +33,7 @@
 <body>
   <h1>Get on the list</h1>
   <p class="mut">Comedy Simulator. Pick an open number. Don't flag the host.</p>
+  <p class="mut" style="color:#b8a9cc; font-size:.8rem;">Spots are subject to change and not guaranteed until you're called up.</p>
 
   <div class="card">
     <label>Stage name</label>
@@ -62,7 +63,7 @@ const status = document.getElementById("status");
 const goBtn = document.getElementById("go");
 let pick = 0;
 
-const DEFAULT_FEED = "https://script.google.com/macros/s/AKfycbwExe7SVzNWsArGK-AhDjnQmTmENlDVm7AhjxD8yWv5KO9Vm23hKkmhQJHJl_5Fgukg4A/exec";
+const DEFAULT_FEED = "https://script.google.com/macros/s/AKfycbwLz7fMMVYCzKCNA_E9hFIh-ie0ZaU7lJJFqAMuFyaEYvgbDjCR-xjNTroTKxCx08s5Og/exec";
 function feedUrl() {
   const q = new URLSearchParams(location.search).get("feed");
   return q || localStorage.getItem("setpulse_webapp") || DEFAULT_FEED;
@@ -80,14 +81,31 @@ function jsonp(url, params) {
   return new Promise((resolve, reject) => {
     const cbName = "setpulse_cb_" + (jsonpCounter++) + "_" + Date.now();
     const script = document.createElement("script");
-    const timer = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, 8000);
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      window[cbName] = () => {}; // absorb a late response instead of throwing
+      script.remove();
+      reject(new Error("timeout"));
+    }, 12000);
     function cleanup() {
       clearTimeout(timer);
-      delete window[cbName];
       script.remove();
+      setTimeout(() => { delete window[cbName]; }, 0);
     }
-    window[cbName] = (data) => { cleanup(); resolve(data); };
-    script.onerror = () => { cleanup(); reject(new Error("network")); };
+    window[cbName] = (data) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(data);
+    };
+    script.onerror = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("network"));
+    };
     const qs = new URLSearchParams(Object.assign({}, params, { callback: cbName })).toString();
     script.src = url + (url.indexOf("?") === -1 ? "?" : "&") + qs;
     document.body.appendChild(script);
