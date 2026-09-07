@@ -35,6 +35,7 @@
 <body>
   <h1>Live order</h1>
   <p class="sub">Comedy Simulator — updates automatically.</p>
+  <p class="sub" id="themeLine" style="display:none; font-weight:700;"></p>
 
   <div class="now">
     <div class="label">On stage</div>
@@ -97,6 +98,9 @@ async function load() {
     const obs = j.obs || {};
     document.getElementById("nowName").textContent = obs.now || "—";
     document.getElementById("nextName").textContent = obs.next ? ("Next: " + obs.next) : "";
+    const themeLine = document.getElementById("themeLine");
+    if (j.theme) { themeLine.textContent = "Tonight's theme: " + j.theme; themeLine.style.display = "block"; }
+    else { themeLine.style.display = "none"; }
     const rows = (j.lineup || []).filter(r => r.name);
     document.getElementById("lineup").innerHTML = rows.length
       ? rows.map(r => `

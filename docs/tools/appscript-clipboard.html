@@ -58,8 +58,9 @@ const TAB_LINEUP = 'LINEUP';
 const DEFAULT_SHOW = 'Comedy Simulator';
 const SLOT_MAX = 20;
 const MC_PIN = '4177';
-const PROTECTED_ACTIONS = ['insert', 'move', 'now', 'on_stage', 'now_performing', 'next', 'done', 'clear', 'cut', 'no_show', 'sync', 'open_signups', 'close_signups', 'begin_show', 'cue_next'];
+const PROTECTED_ACTIONS = ['insert', 'move', 'now', 'on_stage', 'now_performing', 'next', 'done', 'clear', 'cut', 'no_show', 'sync', 'open_signups', 'close_signups', 'begin_show', 'cue_next', 'set_theme'];
 const SIGNUPS_OPEN_PROP = 'signups_open';
+const THEME_PROP = 'theme';
 
 function signupsOpen_() {
   return PropertiesService.getScriptProperties().getProperty(SIGNUPS_OPEN_PROP) === 'true';
@@ -67,6 +68,14 @@ function signupsOpen_() {
 
 function setSignupsOpen_(open) {
   PropertiesService.getScriptProperties().setProperty(SIGNUPS_OPEN_PROP, open ? 'true' : 'false');
+}
+
+function theme_() {
+  return PropertiesService.getScriptProperties().getProperty(THEME_PROP) || '';
+}
+
+function setTheme_(theme) {
+  PropertiesService.getScriptProperties().setProperty(THEME_PROP, String(theme || '').slice(0, 120));
 }
 
 const SIGNUP_HEADERS = ['Timestamp', 'Stage Name', 'Chat Name', 'Note', 'Source', 'Show', 'Channel', 'Synced', 'Signup ID'];
@@ -368,7 +377,7 @@ function obsPayload_() {
 }
 
 function readPayload_() {
-  return { obs: obsPayload_(), slots: slotsPayload_(), signups_open: signupsOpen_() };
+  return { obs: obsPayload_(), slots: slotsPayload_(), signups_open: signupsOpen_(), theme: theme_() };
 }
 
 // Public entry points for google.script.run from the MC deck (HtmlService
@@ -404,6 +413,11 @@ function handleAction_(params) {
   }
   if (action === 'close_signups') {
     setSignupsOpen_(false);
+    return Object.assign({ ok: true }, readPayload_());
+  }
+
+  if (action === 'set_theme') {
+    setTheme_(params.theme || '');
     return Object.assign({ ok: true }, readPayload_());
   }
 
@@ -668,6 +682,11 @@ h2{font-size:.95rem;color:var(--orange);margin:20px 0 8px}
 &lt;p class="err" id="err"&gt;&lt;/p&gt;
 
 &lt;div class="card"&gt;
+  &lt;label class="mut" style="display:block;margin-bottom:6px"&gt;Theme of the night&lt;/label&gt;
+  &lt;input id="theme" placeholder="e.g. Heckle Mic"&gt;
+  &lt;button class="go" id="setTheme" style="width:100%"&gt;Set theme&lt;/button&gt;
+&lt;/div&gt;
+&lt;div class="card"&gt;
   &lt;button class="ghost" id="toggleSignups" style="width:100%"&gt;Signups: ...&lt;/button&gt;
 &lt;/div&gt;
 &lt;div class="card"&gt;
@@ -690,6 +709,7 @@ const PIN=${JSON.stringify(pin)};
 const SHOW=${JSON.stringify(show)};
 let signupsOpen=false;
 let busy=false;
+let themeLoaded=false;
 const errEl=document.getElementById('err');
 
 function esc(s){return String(s).replace(/\\\\/g,'\\\\\\\\').replace(/'/g,"\\\\'");}
@@ -711,6 +731,11 @@ function load(){
     tb.className=signupsOpen?'on':'ghost';
     document.getElementById('nowName').textContent=obs.now||'-';
     document.getElementById('nextName').textContent=obs.next?('Next: '+obs.next):'';
+    const themeInput=document.getElementById('theme');
+    if(!themeLoaded &amp;&amp; document.activeElement!==themeInput){
+      themeInput.value=j.theme||'';
+      themeLoaded=true;
+    }
     const rows=(j.lineup||[]).filter(function(r){return r.name;});
     document.getElementById('list').innerHTML=rows.length?rows.map(function(r){
       const badgeClass=r.status==='on_stage'?'badge on_stage':'badge';
@@ -760,6 +785,9 @@ document.getElementById('beginShow').onclick=function(){
 };
 document.getElementById('cueNext').onclick=function(){
   doAction({action:'cue_next'});
+};
+document.getElementById('setTheme').onclick=function(){
+  doAction({action:'set_theme',theme:document.getElementById('theme').value.trim()});
 };
 load();
 setInterval(load,8000);

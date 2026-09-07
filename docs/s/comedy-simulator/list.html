@@ -33,6 +33,7 @@
 <body>
   <h1>Get on the list</h1>
   <p class="mut">Comedy Simulator. Pick an open number. Don't flag the host.</p>
+  <p class="mut" id="themeLine" style="display:none; font-weight:700;"></p>
   <p class="mut" style="color:#b8a9cc; font-size:.8rem;">Spots are subject to change and not guaranteed until you're called up.</p>
 
   <div class="card">
@@ -126,6 +127,13 @@ async function load() {
   const feed = feedUrl();
   try {
     const j = await jsonp(feed, { format: "slots" });
+    const themeLine = document.getElementById("themeLine");
+    if (j.theme) {
+      themeLine.textContent = "Tonight's theme: " + j.theme;
+      themeLine.style.display = "block";
+    } else {
+      themeLine.style.display = "none";
+    }
     if (!j.signups_open) {
       document.getElementById("grid").innerHTML = '<p class="mut" style="grid-column:1/-1">Signups aren\'t open yet. Check back closer to showtime.</p>';
       goBtn.disabled = true;
