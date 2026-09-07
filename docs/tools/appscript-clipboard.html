@@ -13,7 +13,7 @@
 </style>
 </head>
 <body>
-<p>Producer sheet -&gt; Extensions -&gt; Apps Script -&gt; delete the placeholder -&gt; paste -&gt; Save. Deploy -&gt; Manage deployments -&gt; Edit -&gt; New version -&gt; Deploy.</p>
+<p>Producer sheet -&gt; Extensions -&gt; Apps Script -&gt; delete everything -&gt; paste -&gt; Save. Deploy -&gt; Manage deployments -&gt; Edit -&gt; New version -&gt; Deploy. Check "Who has access" says Anyone.</p>
 <button type="button" id="btn">Copy script</button>
 <pre id="src">/**
  * SetPulse - Producer signup + MC deck + OBS
@@ -58,7 +58,16 @@ const TAB_LINEUP = 'LINEUP';
 const DEFAULT_SHOW = 'Comedy Simulator';
 const SLOT_MAX = 20;
 const MC_PIN = '4177';
-const PROTECTED_ACTIONS = ['insert', 'move', 'now', 'on_stage', 'now_performing', 'next', 'done', 'clear', 'cut', 'no_show', 'sync'];
+const PROTECTED_ACTIONS = ['insert', 'move', 'now', 'on_stage', 'now_performing', 'next', 'done', 'clear', 'cut', 'no_show', 'sync', 'open_signups', 'close_signups'];
+const SIGNUPS_OPEN_PROP = 'signups_open';
+
+function signupsOpen_() {
+  return PropertiesService.getScriptProperties().getProperty(SIGNUPS_OPEN_PROP) === 'true';
+}
+
+function setSignupsOpen_(open) {
+  PropertiesService.getScriptProperties().setProperty(SIGNUPS_OPEN_PROP, open ? 'true' : 'false');
+}
 
 const SIGNUP_HEADERS = ['Timestamp', 'Stage Name', 'Chat Name', 'Note', 'Source', 'Show', 'Channel', 'Synced', 'Signup ID'];
 const MC_HEADERS = ['Order', 'Stage Name', 'Chat Name', 'Note', 'Show', 'Status', 'Added', 'On stage', 'Done', 'Source', 'MC note'];
@@ -358,60 +367,55 @@ function obsPayload_() {
   };
 }
 
-function doGet(e) {
-  const page = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.page) || '';
-  const pin = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.pin) || '';
-  if (page === 'signup' || page === 'list') return htmlPage_('signup');
-  if (page === 'mc') return htmlPage_('mc', pin);
-  const fmt = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.format) || 'obs';
-  let out;
-  if (fmt === 'full') out = { lineup: liveNamed_(), obs: obsPayload_(), slots: slotsPayload_() };
-  else if (fmt === 'slots') out = { slots: slotsPayload_(), obs: obsPayload_() };
-  else out = obsPayload_();
-  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+function readPayload_() {
+  return { obs: obsPayload_(), slots: slotsPayload_(), signups_open: signupsOpen_() };
 }
 
-function doPost(e) {
-  let body = {};
-  try { body = JSON.parse((e.postData &amp;&amp; e.postData.contents) || '{}'); } catch (err) { body = {}; }
-  // Also accept form-encoded posts from a simple HTML form
-  if (e &amp;&amp; e.parameter &amp;&amp; e.parameter.name &amp;&amp; !body.name) {
-    body = e.parameter;
-  }
-  const action = String(body.action || body.status || 'queue').toLowerCase();
-  const name = String(body.name || body.current_performer || '').trim();
-  const note = String(body.note || '');
-  const show = String(body.show || DEFAULT_SHOW);
-  const source = String(body.source || 'list');
-  const chat = String(body.chat_name || body.chat || '');
-  const channel = String(body.channel || source);
-  const atOrder = parseInt(body.order || body.at || body.spot || 0, 10);
-  const pin = String(body.pin || '');
+function handleAction_(params) {
+  const action = String(params.action || params.status || '').toLowerCase();
+  const name = String(params.name || params.current_performer || '').trim();
+  const note = String(params.note || '');
+  const show = String(params.show || DEFAULT_SHOW);
+  const source = String(params.source || 'list');
+  const chat = String(params.chat_name || params.chat || '');
+  const channel = String(params.channel || source);
+  const atOrder = parseInt(params.order || params.at || params.spot || 0, 10);
+  const pin = String(params.pin || '');
 
   if (PROTECTED_ACTIONS.indexOf(action) !== -1 &amp;&amp; pin !== MC_PIN) {
-    return json_({ ok: false, error: 'wrong or missing PIN' });
+    return { ok: false, error: 'wrong or missing PIN' };
+  }
+
+  if (action === 'open_signups') {
+    setSignupsOpen_(true);
+    return Object.assign({ ok: true }, readPayload_());
+  }
+  if (action === 'close_signups') {
+    setSignupsOpen_(false);
+    return Object.assign({ ok: true }, readPayload_());
   }
 
   if (action === 'sync') {
     syncAll();
-    return json_({ ok: true, obs: obsPayload_() });
+    return Object.assign({ ok: true }, readPayload_());
   }
 
   if (action === 'queue' || action === 'list' || action === 'waiting' || action === 'signup' || action === 'claim') {
-    if (!name) return json_({ ok: false, error: 'name required', slots: slotsPayload_() });
+    if (!signupsOpen_()) return Object.assign({ ok: false, error: 'Signups are not open yet.' }, readPayload_());
+    if (!name) return Object.assign({ ok: false, error: 'name required' }, readPayload_());
     const claimed = occupySlot_(name, note, show, source, chat, atOrder || firstOpenSlot_());
-    if (!claimed.ok) return json_(claimed);
+    if (!claimed.ok) return Object.assign({}, claimed, readPayload_());
     appendSignup_(name, chat, note, source, show, channel);
     mirrorMcToLineup_();
-    return json_({ ok: true, order: claimed.order, obs: obsPayload_(), slots: slotsPayload_() });
+    return Object.assign({ ok: true, order: claimed.order }, readPayload_());
   } else if (action === 'insert' || action === 'move') {
-    if (!name) return json_({ ok: false, error: 'name required' });
+    if (!name) return Object.assign({ ok: false, error: 'name required' }, readPayload_());
     addMcRow_(name, note, show, source || 'mc', chat, atOrder || 1);
     placeAt_(name, atOrder || 1);
     compactOrders_();
     mirrorMcToLineup_();
   } else if (action === 'now' || action === 'on_stage' || action === 'now_performing') {
-    if (!name) return json_({ ok: false, error: 'name required' });
+    if (!name) return Object.assign({ ok: false, error: 'name required' }, readPayload_());
     mcRows_().filter(r =&gt; r.status === 'on_stage').forEach(r =&gt; writeMcStatus_(r.name, 'done'));
     addMcRow_(name, note, show, 'mc', chat);
     writeMcStatus_(name, 'on_stage');
@@ -428,7 +432,44 @@ function doPost(e) {
     mirrorMcToLineup_();
   }
 
-  return json_({ ok: true, obs: obsPayload_(), slots: slotsPayload_() });
+  return Object.assign({ ok: true }, readPayload_());
+}
+
+function doGet(e) {
+  const params = (e &amp;&amp; e.parameter) || {};
+  const page = params.page || '';
+  const pin = params.pin || '';
+  if (page === 'signup' || page === 'list') return htmlPage_('signup');
+  if (page === 'mc') return htmlPage_('mc', pin);
+
+  const callback = params.callback;
+  let out;
+  if (params.action) {
+    out = handleAction_(params);
+  } else {
+    const fmt = params.format || 'obs';
+    if (fmt === 'full') out = Object.assign({ lineup: liveNamed_() }, readPayload_());
+    else if (fmt === 'slots') out = readPayload_();
+    else out = obsPayload_();
+  }
+
+  if (callback) {
+    const safeCallback = String(callback).replace(/[^A-Za-z0-9_$.]/g, '');
+    return ContentService.createTextOutput(safeCallback + '(' + JSON.stringify(out) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  let body = {};
+  try { body = JSON.parse((e.postData &amp;&amp; e.postData.contents) || '{}'); } catch (err) { body = {}; }
+  // Also accept form-encoded posts from a simple HTML form
+  if (e &amp;&amp; e.parameter &amp;&amp; e.parameter.name &amp;&amp; !body.name) {
+    body = e.parameter;
+  }
+  if (!body.action) body.action = 'queue';
+  return json_(handleAction_(body));
 }
 
 function appendSignup_(name, chat, note, source, show, channel) {
@@ -497,6 +538,12 @@ async function load(){
   try{
     const res=await fetch(endpoint+'?format=slots');
     const j=await res.json();
+    if(!j.signups_open){
+      document.getElementById('grid').innerHTML='&lt;p class="mut" style="grid-column:1/-1"&gt;Signups aren\\'t open yet. Check back closer to showtime.&lt;/p&gt;';
+      document.getElementById('go').disabled=true;
+      return;
+    }
+    document.getElementById('go').disabled=false;
     draw(j.slots||[]);
   }catch(e){status.textContent='Could not load slots.';}
 }
@@ -555,6 +602,9 @@ input{width:100%;min-height:44px;border:0;border-radius:10px;padding:0 12px;marg
 &lt;h1&gt;MC deck - ${show}&lt;/h1&gt;
 &lt;p class="mut" id="obs"&gt;&lt;/p&gt;
 &lt;div class="row"&gt;
+&lt;button class="ghost" id="toggleSignups"&gt;Signups: ...&lt;/button&gt;
+&lt;/div&gt;
+&lt;div class="row"&gt;
 &lt;input id="walk" placeholder="Walk-up name"&gt;
 &lt;input id="spot" type="number" min="1" placeholder="Insert at # (blank = end)"&gt;
 &lt;button class="go" id="add"&gt;Add / insert&lt;/button&gt;
@@ -563,10 +613,15 @@ input{width:100%;min-height:44px;border:0;border-radius:10px;padding:0 12px;marg
 &lt;script&gt;
 const endpoint=location.href.split('?')[0];
 const PIN=${JSON.stringify(pin)};
+let signupsOpen=false;
 async function load(){
   const res=await fetch(endpoint+'?format=full');
   const j=await res.json();
   const obs=j.obs||{};
+  signupsOpen=!!j.signups_open;
+  const tb=document.getElementById('toggleSignups');
+  tb.textContent=signupsOpen?'Signups: OPEN (tap to close)':'Signups: CLOSED (tap to open)';
+  tb.className=signupsOpen?'go':'ghost';
   document.getElementById('obs').textContent='Now: '+(obs.now||'-')+'  -  Next: '+(obs.next||'-');
   const rows=(j.lineup||[]).filter(r=&gt;r.name);
   document.getElementById('list').innerHTML=rows.map(function(r){
@@ -593,6 +648,11 @@ document.getElementById('add').onclick=async()=&gt;{
     body:JSON.stringify({action,name,order:order||undefined,source:'walkup',show:${JSON.stringify(show)},pin:PIN})});
   document.getElementById('walk').value='';
   document.getElementById('spot').value='';
+  load();
+};
+document.getElementById('toggleSignups').onclick=async()=&gt;{
+  const action=signupsOpen?'close_signups':'open_signups';
+  await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,pin:PIN})});
   load();
 };
 load();
