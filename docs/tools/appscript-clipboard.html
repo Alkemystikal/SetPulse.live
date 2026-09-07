@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Copy - SetPulse Apps Script</title>
+<title>SetPulse - copy Apps Script source</title>
 <style>
-  body { margin:0; font-family:-apple-system,sans-serif; background:#0e0f12; color:#f4f4f5; padding:16px; }
-  p { color:#9aa3af; font-size:.9rem; line-height:1.4; margin:0 0 10px; }
-  button { width:100%; min-height:44px; border:0; border-radius:12px; background:#ff7a00; color:#111; font-weight:700; font-size:1.05rem; }
-  button.ok { background:#39ff14; }
-  pre { white-space:pre-wrap; word-break:break-word; background:#1a1c22; border-radius:12px; padding:12px; font-size:12px; line-height:1.35; max-height:70vh; overflow:auto; margin-top:14px; }
+  body { font-family: -apple-system, sans-serif; background:#0e0f12; color:#f4f4f5; padding:16px; }
+  button { min-height:48px; padding:0 20px; border:0; border-radius:10px; font-weight:700; font-size:1.05rem; background:#e8c547; color:#111; }
+  pre { white-space:pre-wrap; word-break:break-word; background:#1a1c22; padding:12px; border-radius:10px; font-size:.78rem; max-height:60vh; overflow:auto; }
+  .msg { color:#3dd68c; font-weight:700; min-height:1.4em; }
 </style>
 </head>
 <body>
-<p>Producer sheet -&gt; Extensions -&gt; Apps Script -&gt; delete everything -&gt; paste -&gt; Save. Deploy -&gt; Manage deployments -&gt; Edit -&gt; New version -&gt; Deploy.</p>
-<button type="button" id="btn">Copy script</button>
+<h1>SetPulse Apps Script source</h1>
+<button id="copyBtn">Copy script</button>
+<p class="msg" id="msg"></p>
 <pre id="src">/**
  * SetPulse - Producer signup + MC deck + OBS
  *
@@ -551,14 +551,15 @@ function json_(obj) {
 function htmlPage_(kind, pin) {
   const title = kind === 'mc' ? 'SetPulse MC' : 'Get on the list';
   const show = DEFAULT_SHOW;
-  const html = kind === 'mc' ? mcHtml_(show, pin) : signupHtml_(show);
+  const url = ScriptApp.getService().getUrl();
+  const html = kind === 'mc' ? mcHtml_(show, pin, url) : signupHtml_(show, url);
   return HtmlService.createHtmlOutput(html)
     .setTitle(title)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
 }
 
-function signupHtml_(show) {
+function signupHtml_(show, url) {
   return `&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;
 &lt;meta charset="utf-8"&gt;&lt;meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"&gt;
 &lt;title&gt;Get on the list&lt;/title&gt;
@@ -589,7 +590,7 @@ button#go{width:100%;min-height:48px;border:0;border-radius:12px;font-weight:700
 &lt;p class="ok" id="status"&gt;&lt;/p&gt;
 &lt;/div&gt;
 &lt;script&gt;
-const endpoint=location.href.split('?')[0];
+const endpoint=${JSON.stringify(url)};
 const status=document.getElementById('status');
 let pick=0;
 function draw(slots){
@@ -638,7 +639,7 @@ setInterval(load,8000);
 &lt;/script&gt;&lt;/body&gt;&lt;/html&gt;`;
 }
 
-function mcHtml_(show, pin) {
+function mcHtml_(show, pin, url) {
   if (String(pin || '') !== MC_PIN) {
     const wrong = pin ? '&lt;p class="err"&gt;Wrong PIN.&lt;/p&gt;' : '';
     return `&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;
@@ -657,11 +658,11 @@ ${wrong}
 &lt;input id="pin" type="tel" inputmode="numeric" placeholder="PIN" autofocus&gt;
 &lt;button id="go"&gt;Unlock&lt;/button&gt;
 &lt;script&gt;
-const endpoint=location.href.split('?')[0];
+const endpoint=${JSON.stringify(url)};
 function go(){
   const p=document.getElementById('pin').value.trim();
   if(!p)return;
-  location.href=endpoint+'?page=mc&amp;pin='+encodeURIComponent(p);
+  window.top.location.href=endpoint+'?page=mc&amp;pin='+encodeURIComponent(p);
 }
 document.getElementById('go').onclick=go;
 document.getElementById('pin').addEventListener('keydown',e=&gt;{if(e.key==='Enter')go();});
@@ -822,19 +823,16 @@ setInterval(load,8000);
 }
 </pre>
 <script>
-const btn = document.getElementById("btn");
 const src = document.getElementById("src").textContent;
+const btn = document.getElementById("copyBtn");
+const msg = document.getElementById("msg");
 btn.onclick = async () => {
-  try { await navigator.clipboard.writeText(src); }
-  catch (e) {
-    const r = document.createRange();
-    r.selectNodeContents(document.getElementById("src"));
-    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
-    document.execCommand("copy");
+  try {
+    await navigator.clipboard.writeText(src);
+    msg.textContent = "Copied. Paste into Code.gs.";
+  } catch (e) {
+    msg.textContent = "Copy failed: " + e.message;
   }
-  btn.textContent = "Copied";
-  btn.className = "ok";
-  setTimeout(() => { btn.textContent = "Copy script"; btn.className = ""; }, 1600);
 };
 </script>
 </body>
