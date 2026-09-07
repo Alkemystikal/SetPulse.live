@@ -13,7 +13,7 @@
 </style>
 </head>
 <body>
-<p>Producer sheet -&gt; Extensions -&gt; Apps Script -&gt; delete everything -&gt; paste -&gt; Save. Deploy -&gt; Manage deployments -&gt; Edit -&gt; New version -&gt; Deploy. Check "Who has access" says Anyone.</p>
+<p>Producer sheet -&gt; Extensions -&gt; Apps Script -&gt; delete everything -&gt; paste -&gt; Save. Deploy -&gt; Manage deployments -&gt; Edit -&gt; New version -&gt; Deploy.</p>
 <button type="button" id="btn">Copy script</button>
 <pre id="src">/**
  * SetPulse - Producer signup + MC deck + OBS
@@ -574,15 +574,32 @@ setInterval(load,8000);
 
 function mcHtml_(show, pin) {
   if (String(pin || '') !== MC_PIN) {
+    const wrong = pin ? '&lt;p class="err"&gt;Wrong PIN.&lt;/p&gt;' : '';
     return `&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;
 &lt;meta charset="utf-8"&gt;&lt;meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"&gt;
 &lt;title&gt;SetPulse MC&lt;/title&gt;
 &lt;style&gt;
 body{margin:0;background:#0e0f12;color:#f4f4f5;font-family:-apple-system,sans-serif;padding:16px}
 h1{font-size:1.2rem}.mut{color:#9aa3af;font-size:.9rem}
+.err{color:#ff6b6b;font-weight:700}
+input{width:100%;min-height:46px;border:0;border-radius:10px;padding:0 12px;font-size:1.2rem;margin:12px 0;text-align:center;letter-spacing:.2em}
+button{width:100%;min-height:46px;border:0;border-radius:10px;font-weight:700;font-size:1.05rem;background:#e8c547;color:#111}
 &lt;/style&gt;&lt;/head&gt;&lt;body&gt;
 &lt;h1&gt;MC deck&lt;/h1&gt;
-&lt;p class="mut"&gt;Locked. Ask the producer for the MC link.&lt;/p&gt;
+&lt;p class="mut"&gt;Enter the PIN from the producer.&lt;/p&gt;
+${wrong}
+&lt;input id="pin" type="tel" inputmode="numeric" placeholder="PIN" autofocus&gt;
+&lt;button id="go"&gt;Unlock&lt;/button&gt;
+&lt;script&gt;
+const endpoint=location.href.split('?')[0];
+function go(){
+  const p=document.getElementById('pin').value.trim();
+  if(!p)return;
+  location.href=endpoint+'?page=mc&amp;pin='+encodeURIComponent(p);
+}
+document.getElementById('go').onclick=go;
+document.getElementById('pin').addEventListener('keydown',e=&gt;{if(e.key==='Enter')go();});
+&lt;/script&gt;
 &lt;/body&gt;&lt;/html&gt;`;
   }
   return `&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;
