@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copy - SetPulse Apps Script</title>
+<style>
+  body { margin:0; font-family:-apple-system,sans-serif; background:#0e0f12; color:#f4f4f5; padding:16px; }
+  p { color:#9aa3af; font-size:.9rem; line-height:1.4; margin:0 0 10px; }
+  button { width:100%; min-height:44px; border:0; border-radius:12px; background:#ff7a00; color:#111; font-weight:700; font-size:1.05rem; }
+  button.ok { background:#39ff14; }
+  pre { white-space:pre-wrap; word-break:break-word; background:#1a1c22; border-radius:12px; padding:12px; font-size:12px; line-height:1.35; max-height:70vh; overflow:auto; margin-top:14px; }
+</style>
+</head>
+<body>
+<p>Producer sheet -&gt; Extensions -&gt; Apps Script -&gt; delete the placeholder -&gt; paste -&gt; Save. Deploy -&gt; Manage deployments -&gt; Edit -&gt; New version -&gt; Deploy.</p>
+<button type="button" id="btn">Copy script</button>
+<pre id="src">/**
+ * SetPulse - Producer signup + MC deck + OBS
+ *
+ * Bind this script to the Producer Signup spreadsheet.
+ *
+ * Tabs
+ *   SIGNUPS  raw public form / list / QR / IG entries
+ *   MC_DECK  what the MC edits (order, status, walk-ups)
+ *   LINEUP   producer / OBS board (kept in sync with MC_DECK)
+ *
+ * Deploy
+ *   1. Extensions → Apps Script → paste this file → Save
+ *   2. Deploy → New deployment → Web app
+ *      Execute as: Me
+ *      Who has access: Anyone
+ *   3. Paste the web app URL into SHARE!B7 and into the public list / MC HTML pages
+ *
+ * Public form
+ *   Link the Google Form responses to this spreadsheet.
+ *   If Google names the tab "Form Responses 1", either rename it SIGNUPS
+ *   or set TAB_SIGNUPS below to that name.
+ *
+ * POST body (JSON)
+ *   { action:"queue", name, note, show, source, chat_name, order }
+ *   { action:"insert"|"move", name, order }   put name at that spot; everyone at/after slides down
+ *   { action:"now"|"on_stage", name }
+ *   { action:"next", name }
+ *   { action:"done", name }
+ *   { action:"sync" }          copy SIGNUPS → MC_DECK → LINEUP
+ *
+ * GET
+ *   ?format=obs            now / next / on_deck
+ *   ?format=full           lineup + obs
+ *   ?page=signup           public HTML form
+ *   ?page=mc               MC phone deck
+ */
+
+const TAB_SIGNUPS = 'SIGNUPS';
+const TAB_MC = 'MC_DECK';
+const TAB_LINEUP = 'LINEUP';
+const DEFAULT_SHOW = 'Comedy Simulator';
+const SLOT_MAX = 20;
+const MC_PIN = '4177';
+const PROTECTED_ACTIONS = ['insert', 'move', 'now', 'on_stage', 'now_performing', 'next', 'done', 'clear', 'cut', 'no_show', 'sync'];
+
+const SIGNUP_HEADERS = ['Timestamp', 'Stage Name', 'Chat Name', 'Note', 'Source', 'Show', 'Channel', 'Synced', 'Signup ID'];
+const MC_HEADERS = ['Order', 'Stage Name', 'Chat Name', 'Note', 'Show', 'Status', 'Added', 'On stage', 'Done', 'Source', 'MC note'];
+const LINEUP_HEADERS = ['order', 'name', 'note', 'show', 'status', 'added_at', 'on_stage_at', 'done_at', 'source'];
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('SetPulse')
+    .addItem('Sync signups → MC → LINEUP', 'syncAll')
+    .addItem('Renumber list 1...n', 'renumberList')
+    .addItem('Ensure tabs', 'ensureTabs')
+    .addToUi();
+}
+
+function onFormSubmit(e) {
+  // Google Forms usually writes the response before this runs.
+  syncSignupsToMc_();
+  mirrorMcToLineup_();
+}
+
+function onEdit(e) {
+  if (!e || !e.range) return;
+  if (e.range.getSheet().getName() !== TAB_MC) return;
+  const col = e.range.getColumn();
+  const row = e.range.getRow();
+  if (row &lt; 3) return;
+  const sh = e.range.getSheet();
+  const stage = String(sh.getRange(row, 2).getValue() || '').trim();
+  if (col === 6) stampStatus_(sh, row, String(e.value || ''));
+  // Order cell changed on a named row → move that comic into the new spot; others slide.
+  if (col === 1 &amp;&amp; stage) {
+    const dest = parseInt(e.value, 10);
+    if (dest &gt; 0) placeAt_(stage, dest);
+  }
+  // New name typed onto a row that already has an Order → insert at that spot.
+  if (col === 2 &amp;&amp; stage) {
+    const dest = parseInt(sh.getRange(row, 1).getValue(), 10);
+    if (dest &gt; 0) placeAt_(stage, dest);
+    else addMcRow_(stage, String(sh.getRange(row, 4).getValue() || ''), DEFAULT_SHOW, 'mc', '');
+  }
+  mirrorMcToLineup_();
+}
+
+function ensureTabs() {
+  const ss = SpreadsheetApp.getActive();
+  sheetWithHeaders_(ss, TAB_SIGNUPS, SIGNUP_HEADERS);
+  sheetWithHeaders_(ss, TAB_MC, MC_HEADERS);
+  sheetWithHeaders_(ss, TAB_LINEUP, LINEUP_HEADERS);
+}
+
+function sheetWithHeaders_(ss, tab, headers) {
+  let sh = ss.getSheetByName(tab);
+  if (!sh) sh = ss.insertSheet(tab);
+  const existing = sh.getRange(2, 1, 1, headers.length).getValues()[0];
+    // Row 1 is a banner on the xlsx; headers live on row 2.
+  const row1 = sh.getRange(1, 1).getValue();
+  const headerRow = (String(row1).toLowerCase().indexOf('order') === 0 || String(row1).toLowerCase().indexOf('timestamp') === 0) ? 1 : 2;
+  const have = sh.getRange(headerRow, 1, 1, headers.length).getValues()[0].join('|').toLowerCase();
+  if (!have || have.split('|').filter(Boolean).length &lt; 3) {
+    sh.getRange(headerRow, 1, 1, headers.length).setValues([headers]);
+    sh.setFrozenRows(headerRow);
+  }
+  return { sh: sh, headerRow: headerRow };
+}
+
+function headerRowOf_(sh, fallback) {
+  const a1 = String(sh.getRange(1, 1).getValue() || '').toLowerCase();
+  if (a1 === 'order' || a1 === 'timestamp' || a1 === 'order'.toLowerCase()) return 1;
+  return fallback || 2;
+}
+
+function mcSheet_() {
+  return sheetWithHeaders_(SpreadsheetApp.getActive(), TAB_MC, MC_HEADERS);
+}
+
+function lineupSheet_() {
+  return sheetWithHeaders_(SpreadsheetApp.getActive(), TAB_LINEUP, LINEUP_HEADERS);
+}
+
+function signupsSheet_() {
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName(TAB_SIGNUPS);
+  if (!sh) sh = ss.getSheetByName('Form Responses 1') || ss.insertSheet(TAB_SIGNUPS);
+  return sheetWithHeaders_(ss, sh.getName(), SIGNUP_HEADERS);
+}
+
+function readNamedRows_(sh, headerRow, mapFn) {
+  const last = sh.getLastRow();
+  if (last &lt;= headerRow) return [];
+  const width = sh.getLastColumn();
+  const values = sh.getRange(headerRow + 1, 1, last - headerRow, width).getValues();
+  return values.map((r, i) =&gt; mapFn(r, headerRow + 1 + i)).filter(Boolean);
+}
+
+function mcRows_() {
+  const { sh, headerRow } = mcSheet_();
+  return readNamedRows_(sh, headerRow, (r, row) =&gt; {
+    const name = String(r[1] || '').trim();
+    if (!name) return null;
+    return {
+      row: row,
+      order: r[0],
+      name: name,
+      chat_name: String(r[2] || ''),
+      note: String(r[3] || ''),
+      show: String(r[4] || ''),
+      status: String(r[5] || 'waiting'),
+      added_at: r[6],
+      on_stage_at: r[7],
+      done_at: r[8],
+      source: r[9],
+      mc_note: r[10]
+    };
+  });
+}
+
+function signupRows_() {
+  const { sh, headerRow } = signupsSheet_();
+  // Support both our schema and a raw Google Form schema
+  // Our: Timestamp | Stage Name | Chat Name | Note | Source | Show | Channel | Synced | Signup ID
+  // Form: Timestamp | Stage name | Chat name | Note
+  return readNamedRows_(sh, headerRow, (r, row) =&gt; {
+    const name = String(r[1] || '').trim();
+    if (!name) return null;
+    return {
+      row: row,
+      timestamp: r[0],
+      name: name,
+      chat_name: String(r[2] || ''),
+      note: String(r[3] || ''),
+      source: String(r[4] || 'form'),
+      show: String(r[5] || DEFAULT_SHOW),
+      channel: String(r[6] || 'form'),
+      synced: String(r[7] || 'no').toLowerCase()
+    };
+  });
+}
+
+function isLiveStatus_(status) {
+  const s = String(status || '').toLowerCase();
+  return s !== 'done' &amp;&amp; s !== 'cut' &amp;&amp; s !== 'no_show';
+}
+
+function takenSlots_() {
+  const map = {};
+  liveNamed_().forEach(r =&gt; {
+    if (!isLiveStatus_(r.status)) return;
+    const o = parseInt(r.order, 10);
+    if (o &gt;= 1 &amp;&amp; o &lt;= SLOT_MAX) map[o] = r.name;
+  });
+  return map;
+}
+
+function slotsPayload_() {
+  const taken = takenSlots_();
+  const slots = [];
+  for (let i = 1; i &lt;= SLOT_MAX; i++) {
+    slots.push({ order: i, open: !taken[i], name: taken[i] || '' });
+  }
+  return slots;
+}
+
+function firstOpenSlot_() {
+  const taken = takenSlots_();
+  for (let i = 1; i &lt;= SLOT_MAX; i++) if (!taken[i]) return i;
+  return 0;
+}
+
+function occupySlot_(name, note, show, source, chatName, atOrder) {
+  const dest = parseInt(atOrder, 10);
+  if (!(dest &gt;= 1 &amp;&amp; dest &lt;= SLOT_MAX)) {
+    return { ok: false, error: 'pick a slot 1-20', slots: slotsPayload_() };
+  }
+  const taken = takenSlots_();
+  const existing = liveNamed_().find(r =&gt; r.name.toLowerCase() === String(name).toLowerCase() &amp;&amp; isLiveStatus_(r.status));
+  if (existing &amp;&amp; Number(existing.order) === dest) {
+    return { ok: true, already: true, order: dest, slots: slotsPayload_() };
+  }
+  if (taken[dest] &amp;&amp; (!existing || taken[dest].toLowerCase() !== String(name).toLowerCase())) {
+    return { ok: false, error: 'slot ' + dest + ' is taken', slots: slotsPayload_() };
+  }
+  if (existing) {
+    const { sh } = mcSheet_();
+    sh.getRange(existing.row, 1).setValue(dest);
+    return { ok: true, order: dest, slots: slotsPayload_() };
+  }
+  const { sh } = mcSheet_();
+  sh.appendRow([dest, name, chatName || '', note || '', show || DEFAULT_SHOW, 'waiting', new Date(), '', '', source || 'list', '']);
+  return { ok: true, order: dest, slots: slotsPayload_() };
+}
+
+function addMcRow_(name, note, show, source, chatName, atOrder) {
+  const all = mcRows_();
+  const live = all.find(r =&gt; r.name.toLowerCase() === name.toLowerCase() &amp;&amp; isLiveStatus_(r.status));
+  if (live) {
+    if (atOrder) placeAt_(name, atOrder);
+    return live;
+  }
+  const { sh } = mcSheet_();
+  const now = new Date();
+  const dest = parseInt(atOrder, 10);
+  const order = dest &gt; 0 ? Math.min(dest, SLOT_MAX) : (firstOpenSlot_() || all.length + 1);
+  sh.appendRow([order, name, chatName || '', note || '', show || DEFAULT_SHOW, 'waiting', now, '', '', source || 'form', '']);
+  if (dest &gt; 0) placeAt_(name, dest);
+  return { name: name, status: 'waiting', order: order };
+}
+
+function liveNamed_() {
+  return mcRows_().slice().sort((a, b) =&gt; Number(a.order || 9999) - Number(b.order || 9999));
+}
+
+function placeAt_(name, dest) {
+  const target = Math.max(1, parseInt(dest, 10) || 1);
+  const { sh } = mcSheet_();
+  const named = liveNamed_();
+  const moving = named.find(r =&gt; r.name.toLowerCase() === String(name).toLowerCase());
+  if (!moving) return;
+  const without = named.filter(r =&gt; r.row !== moving.row);
+  const idx = Math.min(Math.max(target - 1, 0), without.length);
+  without.splice(idx, 0, moving);
+  without.forEach((r, i) =&gt; sh.getRange(r.row, 1).setValue(i + 1));
+}
+
+function compactOrders_() {
+  const { sh } = mcSheet_();
+  liveNamed_().forEach((r, i) =&gt; {
+    if (Number(r.order) !== i + 1) sh.getRange(r.row, 1).setValue(i + 1);
+  });
+}
+
+function renumberList() {
+  compactOrders_();
+  mirrorMcToLineup_();
+}
+
+function stampStatus_(sh, row, status) {
+  const now = new Date();
+  const s = String(status || '').toLowerCase();
+  if (s === 'on_stage') sh.getRange(row, 8).setValue(now);
+  if (s === 'done' || s === 'cut' || s === 'no_show') sh.getRange(row, 9).setValue(now);
+}
+
+function writeMcStatus_(name, status) {
+  const { sh } = mcSheet_();
+  const all = mcRows_();
+  const now = new Date();
+  let hit = all.find(r =&gt; r.name.toLowerCase() === name.toLowerCase());
+  if (!hit) {
+    addMcRow_(name, '', DEFAULT_SHOW, 'mc', '');
+    hit = mcRows_().find(r =&gt; r.name.toLowerCase() === name.toLowerCase());
+  }
+  if (!hit) return;
+  sh.getRange(hit.row, 6).setValue(status);
+  stampStatus_(sh, hit.row, status);
+}
+
+function syncSignupsToMc_() {
+  const { sh, headerRow } = signupsSheet_();
+  const rows = signupRows_();
+  rows.forEach(r =&gt; {
+    if (r.synced === 'yes') return;
+    addMcRow_(r.name, r.note, r.show, r.source || 'form', r.chat_name);
+    // Synced column is H (8) on our schema; skip if the form tab has fewer columns
+    if (sh.getLastColumn() &gt;= 8) sh.getRange(r.row, 8).setValue('yes');
+  });
+}
+
+function mirrorMcToLineup_() {
+  const { sh, headerRow } = lineupSheet_();
+  const rows = mcRows_().sort((a, b) =&gt; Number(a.order || 0) - Number(b.order || 0));
+  const last = sh.getLastRow();
+  if (last &gt; headerRow) sh.getRange(headerRow + 1, 1, last - headerRow, LINEUP_HEADERS.length).clearContent();
+  if (!rows.length) return;
+  const values = rows.map(r =&gt; [
+    r.order, r.name, r.note, r.show || DEFAULT_SHOW, r.status || 'waiting',
+    r.added_at, r.on_stage_at, r.done_at, r.source || ''
+  ]);
+  sh.getRange(headerRow + 1, 1, values.length, LINEUP_HEADERS.length).setValues(values);
+}
+
+function syncAll() {
+  ensureTabs();
+  syncSignupsToMc_();
+  mirrorMcToLineup_();
+}
+
+function obsPayload_() {
+  const all = mcRows_().sort((a, b) =&gt; Number(a.order || 0) - Number(b.order || 0));
+  const waiting = all.filter(r =&gt; r.status === 'waiting' || r.status === 'next');
+  const on = all.find(r =&gt; r.status === 'on_stage');
+  const next = all.find(r =&gt; r.status === 'next') || waiting[0] || null;
+  return {
+    now: on ? on.name : '',
+    next: next &amp;&amp; (!on || next.name !== on.name) ? next.name : (waiting[1] ? waiting[1].name : ''),
+    on_deck: waiting.slice(0, 8).map(r =&gt; r.name),
+    show: (on &amp;&amp; on.show) || (waiting[0] &amp;&amp; waiting[0].show) || DEFAULT_SHOW
+  };
+}
+
+function doGet(e) {
+  const page = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.page) || '';
+  const pin = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.pin) || '';
+  if (page === 'signup' || page === 'list') return htmlPage_('signup');
+  if (page === 'mc') return htmlPage_('mc', pin);
+  const fmt = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.format) || 'obs';
+  let out;
+  if (fmt === 'full') out = { lineup: liveNamed_(), obs: obsPayload_(), slots: slotsPayload_() };
+  else if (fmt === 'slots') out = { slots: slotsPayload_(), obs: obsPayload_() };
+  else out = obsPayload_();
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  let body = {};
+  try { body = JSON.parse((e.postData &amp;&amp; e.postData.contents) || '{}'); } catch (err) { body = {}; }
+  // Also accept form-encoded posts from a simple HTML form
+  if (e &amp;&amp; e.parameter &amp;&amp; e.parameter.name &amp;&amp; !body.name) {
+    body = e.parameter;
+  }
+  const action = String(body.action || body.status || 'queue').toLowerCase();
+  const name = String(body.name || body.current_performer || '').trim();
+  const note = String(body.note || '');
+  const show = String(body.show || DEFAULT_SHOW);
+  const source = String(body.source || 'list');
+  const chat = String(body.chat_name || body.chat || '');
+  const channel = String(body.channel || source);
+  const atOrder = parseInt(body.order || body.at || body.spot || 0, 10);
+  const pin = String(body.pin || '');
+
+  if (PROTECTED_ACTIONS.indexOf(action) !== -1 &amp;&amp; pin !== MC_PIN) {
+    return json_({ ok: false, error: 'wrong or missing PIN' });
+  }
+
+  if (action === 'sync') {
+    syncAll();
+    return json_({ ok: true, obs: obsPayload_() });
+  }
+
+  if (action === 'queue' || action === 'list' || action === 'waiting' || action === 'signup' || action === 'claim') {
+    if (!name) return json_({ ok: false, error: 'name required', slots: slotsPayload_() });
+    const claimed = occupySlot_(name, note, show, source, chat, atOrder || firstOpenSlot_());
+    if (!claimed.ok) return json_(claimed);
+    appendSignup_(name, chat, note, source, show, channel);
+    mirrorMcToLineup_();
+    return json_({ ok: true, order: claimed.order, obs: obsPayload_(), slots: slotsPayload_() });
+  } else if (action === 'insert' || action === 'move') {
+    if (!name) return json_({ ok: false, error: 'name required' });
+    addMcRow_(name, note, show, source || 'mc', chat, atOrder || 1);
+    placeAt_(name, atOrder || 1);
+    compactOrders_();
+    mirrorMcToLineup_();
+  } else if (action === 'now' || action === 'on_stage' || action === 'now_performing') {
+    if (!name) return json_({ ok: false, error: 'name required' });
+    mcRows_().filter(r =&gt; r.status === 'on_stage').forEach(r =&gt; writeMcStatus_(r.name, 'done'));
+    addMcRow_(name, note, show, 'mc', chat);
+    writeMcStatus_(name, 'on_stage');
+    mirrorMcToLineup_();
+  } else if (action === 'next') {
+    if (name) writeMcStatus_(name, 'next');
+    mirrorMcToLineup_();
+  } else if (action === 'done' || action === 'clear') {
+    if (name) writeMcStatus_(name, 'done');
+    else mcRows_().filter(r =&gt; r.status === 'on_stage').forEach(r =&gt; writeMcStatus_(r.name, 'done'));
+    mirrorMcToLineup_();
+  } else if (action === 'cut' || action === 'no_show') {
+    if (name) writeMcStatus_(name, action);
+    mirrorMcToLineup_();
+  }
+
+  return json_({ ok: true, obs: obsPayload_(), slots: slotsPayload_() });
+}
+
+function appendSignup_(name, chat, note, source, show, channel) {
+  const { sh, headerRow } = signupsSheet_();
+  const id = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Pacific/Honolulu', "yyyyMMdd-HHmmss") + '-' + name.replace(/\s+/g, '').slice(0, 8);
+  sh.appendRow([new Date(), name, chat || '', note || '', source || 'form', show || DEFAULT_SHOW, channel || '', 'yes', id]);
+}
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function htmlPage_(kind, pin) {
+  const title = kind === 'mc' ? 'SetPulse MC' : 'Get on the list';
+  const show = DEFAULT_SHOW;
+  const html = kind === 'mc' ? mcHtml_(show, pin) : signupHtml_(show);
+  return HtmlService.createHtmlOutput(html)
+    .setTitle(title)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+}
+
+function signupHtml_(show) {
+  return `&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;
+&lt;meta charset="utf-8"&gt;&lt;meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"&gt;
+&lt;title&gt;Get on the list&lt;/title&gt;
+&lt;style&gt;
+:root{--bg:#0e0f12;--card:#1a1c22;--ink:#f4f4f5;--mut:#9aa3af;--go:#e8c547;--on:#3dd68c;--taken:#2a2e36}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,sans-serif;padding:16px 16px 36px}
+h1{font-size:1.3rem;margin:0 0 6px}.mut{color:var(--mut);font-size:.92rem;line-height:1.4}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-top:14px}
+label{display:block;font-size:.78rem;color:var(--mut);margin:0 0 6px}
+input{width:100%;min-height:46px;border:0;border-radius:12px;padding:0 12px;font-size:1rem;margin-bottom:12px}
+button#go{width:100%;min-height:48px;border:0;border-radius:12px;font-weight:700;font-size:1.05rem;background:var(--go);color:#111}
+.ok{color:var(--on);font-weight:700;min-height:1.4em}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 14px}
+.slot{min-height:48px;border:0;border-radius:10px;font-weight:700;background:#2a2e36;color:#fff}
+.slot.open{background:#1f3d2a}
+.slot.pick{background:var(--go);color:#111}
+.slot.taken{background:var(--taken);color:#6b7280}
+&lt;/style&gt;&lt;/head&gt;&lt;body&gt;
+&lt;h1&gt;Get on the list&lt;/h1&gt;
+&lt;p class="mut"&gt;${show}. Pick an open number. Don't flag the host.&lt;/p&gt;
+&lt;div class="card"&gt;
+&lt;label&gt;Stage name&lt;/label&gt;&lt;input id="name" placeholder="Name as you want it called" autocomplete="name"&gt;
+&lt;label&gt;Chat name (optional)&lt;/label&gt;&lt;input id="chat" placeholder="@handle" autocomplete="username"&gt;
+&lt;label&gt;Note (optional)&lt;/label&gt;&lt;input id="note" placeholder="first time / 5 min" maxlength="80"&gt;
+&lt;label&gt;Your spot&lt;/label&gt;
+&lt;div class="grid" id="grid"&gt;&lt;/div&gt;
+&lt;button id="go"&gt;Claim this spot&lt;/button&gt;
+&lt;p class="ok" id="status"&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;script&gt;
+const endpoint=location.href.split('?')[0];
+const status=document.getElementById('status');
+let pick=0;
+function draw(slots){
+  const open=(slots||[]).filter(s=&gt;s.open);
+  document.getElementById('grid').innerHTML=open.length?open.map(s=&gt;{
+    const cls=Number(s.order)===pick?'slot pick':'slot open';
+    return '&lt;button type="button" class="'+cls+'" data-n="'+s.order+'"&gt;'+s.order+'&lt;/button&gt;';
+  }).join(''):'&lt;p class="mut" style="grid-column:1/-1"&gt;List is full right now.&lt;/p&gt;';
+  document.querySelectorAll('.slot.open,.slot.pick').forEach(b=&gt;b.onclick=()=&gt;{pick=Number(b.dataset.n);draw(slots);});
+}
+async function load(){
+  try{
+    const res=await fetch(endpoint+'?format=slots');
+    const j=await res.json();
+    draw(j.slots||[]);
+  }catch(e){status.textContent='Could not load slots.';}
+}
+document.getElementById('go').onclick=async()=&gt;{
+  const name=document.getElementById('name').value.trim();
+  if(!name){status.textContent='Need a name.';return;}
+  if(!pick){status.textContent='Pick an open spot.';return;}
+  status.textContent='Sending...';
+  try{
+    const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'claim',name,order:pick,chat_name:document.getElementById('chat').value.trim(),
+        note:document.getElementById('note').value.trim(),show:${JSON.stringify(show)},source:'list',channel:'list_page'})});
+    const j=await res.json();
+    if(j.ok){
+      status.textContent='You are #'+j.order+'.';
+      document.getElementById('name').value='';
+      document.getElementById('chat').value='';
+      document.getElementById('note').value='';
+      pick=0;
+    }else status.textContent=j.error||'That spot is gone.';
+    if(j.slots)draw(j.slots); else load();
+  }catch(e){status.textContent='Network miss. Try again.';}
+};
+load();
+setInterval(load,8000);
+&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;`;
+}
+
+function mcHtml_(show, pin) {
+  if (String(pin || '') !== MC_PIN) {
+    return `&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;
+&lt;meta charset="utf-8"&gt;&lt;meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"&gt;
+&lt;title&gt;SetPulse MC&lt;/title&gt;
+&lt;style&gt;
+body{margin:0;background:#0e0f12;color:#f4f4f5;font-family:-apple-system,sans-serif;padding:16px}
+h1{font-size:1.2rem}.mut{color:#9aa3af;font-size:.9rem}
+&lt;/style&gt;&lt;/head&gt;&lt;body&gt;
+&lt;h1&gt;MC deck&lt;/h1&gt;
+&lt;p class="mut"&gt;Locked. Ask the producer for the MC link.&lt;/p&gt;
+&lt;/body&gt;&lt;/html&gt;`;
+  }
+  return `&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;
+&lt;meta charset="utf-8"&gt;&lt;meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"&gt;
+&lt;title&gt;SetPulse MC&lt;/title&gt;
+&lt;style&gt;
+:root{--bg:#0e0f12;--card:#1a1c22;--ink:#f4f4f5;--mut:#9aa3af;--go:#e8c547}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,sans-serif;padding:16px}
+h1{font-size:1.2rem;margin:0 0 8px}.mut{color:var(--mut);font-size:.86rem}
+.row{background:var(--card);border-radius:14px;padding:12px;margin:8px 0}
+.row b{display:block;font-size:1.05rem}
+.btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.btns button{flex:1;min-height:40px;border:0;border-radius:10px;font-weight:700}
+.go{background:var(--go);color:#111}.ghost{background:#2a2e36;color:#fff}
+input{width:100%;min-height:44px;border:0;border-radius:10px;padding:0 12px;margin:6px 0}
+&lt;/style&gt;&lt;/head&gt;&lt;body&gt;
+&lt;h1&gt;MC deck - ${show}&lt;/h1&gt;
+&lt;p class="mut" id="obs"&gt;&lt;/p&gt;
+&lt;div class="row"&gt;
+&lt;input id="walk" placeholder="Walk-up name"&gt;
+&lt;input id="spot" type="number" min="1" placeholder="Insert at # (blank = end)"&gt;
+&lt;button class="go" id="add"&gt;Add / insert&lt;/button&gt;
+&lt;/div&gt;
+&lt;div id="list"&gt;&lt;/div&gt;
+&lt;script&gt;
+const endpoint=location.href.split('?')[0];
+const PIN=${JSON.stringify(pin)};
+async function load(){
+  const res=await fetch(endpoint+'?format=full');
+  const j=await res.json();
+  const obs=j.obs||{};
+  document.getElementById('obs').textContent='Now: '+(obs.now||'-')+'  -  Next: '+(obs.next||'-');
+  const rows=(j.lineup||[]).filter(r=&gt;r.name);
+  document.getElementById('list').innerHTML=rows.map(function(r){
+    return '&lt;div class="row"&gt;&lt;b&gt;'+(r.order||'')+'. '+r.name+'&lt;/b&gt;'+
+      '&lt;span class="mut"&gt;'+(r.status||'waiting')+(r.note?' - '+r.note:'')+'&lt;/span&gt;'+
+      '&lt;div class="btns"&gt;'+
+        '&lt;button class="ghost" onclick="act(\'next\',\''+esc(r.name)+'\')"&gt;Next&lt;/button&gt;'+
+        '&lt;button class="go" onclick="act(\'on_stage\',\''+esc(r.name)+'\')"&gt;On stage&lt;/button&gt;'+
+        '&lt;button class="ghost" onclick="act(\'done\',\''+esc(r.name)+'\')"&gt;Done&lt;/button&gt;'+
+      '&lt;/div&gt;&lt;/div&gt;';
+  }).join('')||'&lt;p class="mut"&gt;List is empty.&lt;/p&gt;';
+}
+function esc(s){return String(s).replace(/\\\\/g,'\\\\\\\\').replace(/'/g,"\\\\'");}
+async function act(action,name){
+  await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,name,pin:PIN})});
+  load();
+}
+document.getElementById('add').onclick=async()=&gt;{
+  const name=document.getElementById('walk').value.trim();
+  if(!name)return;
+  const order=parseInt(document.getElementById('spot').value,10);
+  const action=order&gt;0?'insert':'queue';
+  await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action,name,order:order||undefined,source:'walkup',show:${JSON.stringify(show)},pin:PIN})});
+  document.getElementById('walk').value='';
+  document.getElementById('spot').value='';
+  load();
+};
+load();
+setInterval(load,8000);
+&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;`;
+}
+</pre>
+<script>
+const btn = document.getElementById("btn");
+const src = document.getElementById("src").textContent;
+btn.onclick = async () => {
+  try { await navigator.clipboard.writeText(src); }
+  catch (e) {
+    const r = document.createRange();
+    r.selectNodeContents(document.getElementById("src"));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    document.execCommand("copy");
+  }
+  btn.textContent = "Copied";
+  btn.className = "ok";
+  setTimeout(() => { btn.textContent = "Copy script"; btn.className = ""; }, 1600);
+};
+</script>
+</body>
+</html>
