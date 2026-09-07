@@ -64,7 +64,7 @@ const status = document.getElementById("status");
 const goBtn = document.getElementById("go");
 let pick = 0;
 
-const DEFAULT_FEED = "https://script.google.com/macros/s/AKfycbxsF0pHfYMLpTZT4wxt-UZflttypt5xHfuFuH-4ll299qKUgAnUkxzZNx73OrqUQ9PpAg/exec";
+const DEFAULT_FEED = "https://script.google.com/macros/s/AKfycbzNHnewCBmN9ZkyW25uDZteLAmjq_muXT4CxGi4_i5Ot7diea2N4I9M6JK_zZwXawEwWA/exec";
 function feedUrl() {
   const q = new URLSearchParams(location.search).get("feed");
   return q || localStorage.getItem("setpulse_webapp") || DEFAULT_FEED;
