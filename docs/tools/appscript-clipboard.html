@@ -625,84 +625,141 @@ document.getElementById('pin').addEventListener('keydown',e=&gt;{if(e.key==='Ent
 &lt;meta charset="utf-8"&gt;&lt;meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"&gt;
 &lt;title&gt;SetPulse MC&lt;/title&gt;
 &lt;style&gt;
-:root{--bg:#0e0f12;--card:#1a1c22;--ink:#f4f4f5;--mut:#9aa3af;--go:#e8c547}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,sans-serif;padding:16px}
-h1{font-size:1.2rem;margin:0 0 8px}.mut{color:var(--mut);font-size:.86rem}
-.row{background:var(--card);border-radius:14px;padding:12px;margin:8px 0}
-.row b{display:block;font-size:1.05rem}
-.btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
-.btns button{flex:1;min-height:40px;border:0;border-radius:10px;font-weight:700}
-.go{background:var(--go);color:#111}.ghost{background:#2a2e36;color:#fff}
-input{width:100%;min-height:44px;border:0;border-radius:10px;padding:0 12px;margin:6px 0}
+:root{--ink:#f0eafa;--orange:#ff7a00;--green:#39ff14;--card:rgba(255,255,255,0.06);--mut:#8a7ba0}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,sans-serif;padding:16px 16px 40px;color:var(--ink);
+  background:radial-gradient(circle at center,#3a1f5d 0%,#1a0f2e 45%,#000000 100%);background-attachment:fixed;min-height:100vh}
+h1{font-size:1.2rem;margin:0 0 4px;color:var(--orange)}
+.mut{color:var(--mut);font-size:.86rem}
+.err{color:#ff6b6b;font-weight:700;min-height:1.2em;margin:6px 0}
+.now{background:rgba(57,255,20,0.1);border:1px solid rgba(57,255,20,0.35);border-radius:14px;padding:10px 14px;margin:10px 0}
+.now .label{font-size:.68rem;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.now .name{font-size:1.2rem;font-weight:800;color:var(--green)}
+.card{background:var(--card);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px;margin:8px 0}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow button{flex:1;min-height:42px;border:0;border-radius:10px;font-weight:700}
+.go{background:var(--orange);color:#111}.ghost{background:rgba(255,255,255,0.08);color:#fff}
+.on{background:var(--green);color:#111}
+input{width:100%;min-height:44px;border:0;border-radius:10px;padding:0 12px;margin:6px 0;font-size:1rem}
+.who{font-weight:700;font-size:1.02rem}
+.badge{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,0.1);color:var(--mut);margin-left:6px}
+.badge.on_stage{background:rgba(57,255,20,0.18);color:var(--green)}
+.meta{color:var(--mut);font-size:.8rem;margin-top:2px}
+h2{font-size:.95rem;color:var(--orange);margin:20px 0 8px}
 &lt;/style&gt;&lt;/head&gt;&lt;body&gt;
 &lt;h1&gt;MC deck - ${show}&lt;/h1&gt;
-&lt;p class="mut" id="obs"&gt;&lt;/p&gt;
-&lt;div class="row"&gt;
-&lt;button class="ghost" id="toggleSignups"&gt;Signups: ...&lt;/button&gt;
+&lt;div class="now"&gt;
+  &lt;div class="label"&gt;On stage&lt;/div&gt;
+  &lt;div class="name" id="nowName"&gt;-&lt;/div&gt;
+  &lt;div class="mut" id="nextName"&gt;&lt;/div&gt;
 &lt;/div&gt;
-&lt;div class="row"&gt;
-&lt;div class="btns"&gt;
-&lt;button class="go" id="beginShow"&gt;Begin Simulation&lt;/button&gt;
-&lt;button class="ghost" id="cueNext"&gt;Cue Next Comic&lt;/button&gt;
+&lt;p class="err" id="err"&gt;&lt;/p&gt;
+
+&lt;div class="card"&gt;
+  &lt;button class="ghost" id="toggleSignups" style="width:100%"&gt;Signups: ...&lt;/button&gt;
 &lt;/div&gt;
+&lt;div class="card"&gt;
+  &lt;div class="btnrow"&gt;
+    &lt;button class="go" id="beginShow"&gt;Begin Simulation&lt;/button&gt;
+    &lt;button class="ghost" id="cueNext"&gt;Cue Next Comic&lt;/button&gt;
+  &lt;/div&gt;
 &lt;/div&gt;
-&lt;div class="row"&gt;
-&lt;input id="walk" placeholder="Walk-up name"&gt;
-&lt;input id="spot" type="number" min="1" placeholder="Insert at # (blank = end)"&gt;
-&lt;button class="go" id="add"&gt;Add / insert&lt;/button&gt;
+&lt;div class="card"&gt;
+  &lt;input id="walk" placeholder="Walk-up name"&gt;
+  &lt;input id="spot" type="number" min="1" placeholder="Insert at # (blank = end)"&gt;
+  &lt;button class="go" id="add" style="width:100%"&gt;Add / insert&lt;/button&gt;
 &lt;/div&gt;
+
+&lt;h2&gt;Lineup&lt;/h2&gt;
 &lt;div id="list"&gt;&lt;/div&gt;
+
 &lt;script&gt;
 const endpoint=location.href.split('?')[0];
 const PIN=${JSON.stringify(pin)};
+const SHOW=${JSON.stringify(show)};
 let signupsOpen=false;
-async function load(){
-  const res=await fetch(endpoint+'?format=full');
-  const j=await res.json();
-  const obs=j.obs||{};
-  signupsOpen=!!j.signups_open;
-  const tb=document.getElementById('toggleSignups');
-  tb.textContent=signupsOpen?'Signups: OPEN (tap to close)':'Signups: CLOSED (tap to open)';
-  tb.className=signupsOpen?'go':'ghost';
-  document.getElementById('obs').textContent='Now: '+(obs.now||'-')+'  -  Next: '+(obs.next||'-');
-  const rows=(j.lineup||[]).filter(r=&gt;r.name);
-  document.getElementById('list').innerHTML=rows.map(function(r){
-    return '&lt;div class="row"&gt;&lt;b&gt;'+(r.order||'')+'. '+r.name+'&lt;/b&gt;'+
-      '&lt;span class="mut"&gt;'+(r.status||'waiting')+(r.note?' - '+r.note:'')+'&lt;/span&gt;'+
-      '&lt;div class="btns"&gt;'+
-        '&lt;button class="ghost" onclick="act(\'next\',\''+esc(r.name)+'\')"&gt;Next&lt;/button&gt;'+
-        '&lt;button class="go" onclick="act(\'on_stage\',\''+esc(r.name)+'\')"&gt;On stage&lt;/button&gt;'+
-        '&lt;button class="ghost" onclick="act(\'done\',\''+esc(r.name)+'\')"&gt;Done&lt;/button&gt;'+
-      '&lt;/div&gt;&lt;/div&gt;';
-  }).join('')||'&lt;p class="mut"&gt;List is empty.&lt;/p&gt;';
+const errEl=document.getElementById('err');
+
+let jsonpCounter=0;
+function jsonp(params){
+  return new Promise((resolve,reject)=&gt;{
+    const cbName='setpulse_mc_cb_'+(jsonpCounter++)+'_'+Date.now();
+    const script=document.createElement('script');
+    let settled=false;
+    const timer=setTimeout(()=&gt;{
+      if(settled)return; settled=true;
+      window[cbName]=function(){};
+      script.remove();
+      reject(new Error('timeout'));
+    },12000);
+    function cleanup(){ clearTimeout(timer); script.remove(); setTimeout(()=&gt;{delete window[cbName];},0); }
+    window[cbName]=function(data){ if(settled)return; settled=true; cleanup(); resolve(data); };
+    script.onerror=function(){ if(settled)return; settled=true; cleanup(); reject(new Error('network')); };
+    const qs=new URLSearchParams(Object.assign({},params,{callback:cbName})).toString();
+    script.src=endpoint+'?'+qs;
+    document.body.appendChild(script);
+  });
 }
+
 function esc(s){return String(s).replace(/\\\\/g,'\\\\\\\\').replace(/'/g,"\\\\'");}
+
+async function load(){
+  try{
+    const j=await jsonp({format:'full',pin:PIN});
+    errEl.textContent='';
+    const obs=j.obs||{};
+    signupsOpen=!!j.signups_open;
+    const tb=document.getElementById('toggleSignups');
+    tb.textContent=signupsOpen?'Signups: OPEN (tap to close)':'Signups: CLOSED (tap to open)';
+    tb.className=signupsOpen?'on':'ghost';
+    document.getElementById('nowName').textContent=obs.now||'-';
+    document.getElementById('nextName').textContent=obs.next?('Next: '+obs.next):'';
+    const rows=(j.lineup||[]).filter(r=&gt;r.name);
+    document.getElementById('list').innerHTML=rows.length?rows.map(function(r){
+      const badgeClass=r.status==='on_stage'?'badge on_stage':'badge';
+      const meta=[r.chat_name?('@'+r.chat_name):'',r.note||''].filter(Boolean).join(' - ');
+      return '&lt;div class="card"&gt;&lt;div class="who"&gt;'+(r.order||'')+'. '+r.name+
+        '&lt;span class="'+badgeClass+'"&gt;'+(r.status||'waiting')+'&lt;/span&gt;&lt;/div&gt;'+
+        (meta?'&lt;div class="meta"&gt;'+meta+'&lt;/div&gt;':'')+
+        '&lt;div class="btnrow" style="margin-top:8px"&gt;'+
+          '&lt;button class="ghost" onclick="act(\\'next\\',\\''+esc(r.name)+'\\')"&gt;Next&lt;/button&gt;'+
+          '&lt;button class="go" onclick="act(\\'on_stage\\',\\''+esc(r.name)+'\\')"&gt;On stage&lt;/button&gt;'+
+          '&lt;button class="ghost" onclick="act(\\'done\\',\\''+esc(r.name)+'\\')"&gt;Done&lt;/button&gt;'+
+        '&lt;/div&gt;&lt;/div&gt;';
+    }).join(''):'&lt;p class="mut"&gt;List is empty.&lt;/p&gt;';
+  }catch(e){
+    errEl.textContent='Could not load the deck. Retrying...';
+  }
+}
+
 async function act(action,name){
-  await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,name,pin:PIN})});
+  try{ await jsonp({action:action,name:name,pin:PIN}); } catch(e){}
   load();
 }
+
 document.getElementById('add').onclick=async()=&gt;{
   const name=document.getElementById('walk').value.trim();
   if(!name)return;
   const order=parseInt(document.getElementById('spot').value,10);
   const action=order&gt;0?'insert':'queue';
-  await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action,name,order:order||undefined,source:'walkup',show:${JSON.stringify(show)},pin:PIN})});
+  try{
+    await jsonp({action:action,name:name,order:order||undefined,source:'walkup',show:SHOW,pin:PIN});
+  }catch(e){}
   document.getElementById('walk').value='';
   document.getElementById('spot').value='';
   load();
 };
 document.getElementById('toggleSignups').onclick=async()=&gt;{
   const action=signupsOpen?'close_signups':'open_signups';
-  await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,pin:PIN})});
+  try{ await jsonp({action:action,pin:PIN}); } catch(e){}
   load();
 };
 document.getElementById('beginShow').onclick=async()=&gt;{
-  await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'begin_show',pin:PIN})});
+  try{ await jsonp({action:'begin_show',pin:PIN}); } catch(e){}
   load();
 };
 document.getElementById('cueNext').onclick=async()=&gt;{
-  await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cue_next',pin:PIN})});
+  try{ await jsonp({action:'cue_next',pin:PIN}); } catch(e){}
   load();
 };
 load();
