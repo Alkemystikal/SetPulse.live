@@ -48,7 +48,7 @@
   <a class="back" href="list.html">&larr; Get on the list</a>
 
 <script>
-const DEFAULT_FEED = "https://script.google.com/macros/s/AKfycbwLz7fMMVYCzKCNA_E9hFIh-ie0ZaU7lJJFqAMuFyaEYvgbDjCR-xjNTroTKxCx08s5Og/exec";
+const DEFAULT_FEED = "https://script.google.com/macros/s/AKfycbwpcTzR_PKXwfZfyJ_7f90lKld7GKQURLcbGzWtLzgnf8N3Sl62QW1i_EXADErIprrphA/exec";
 function feedUrl() {
   const q = new URLSearchParams(location.search).get("feed");
   return q || localStorage.getItem("setpulse_webapp") || DEFAULT_FEED;
