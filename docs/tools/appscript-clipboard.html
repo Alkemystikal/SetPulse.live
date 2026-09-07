@@ -389,20 +389,28 @@ function dateSafe_(v) {
 }
 
 function mcData(pin) {
-  if (String(pin || '') !== MC_PIN) return { ok: false, error: 'wrong or missing PIN' };
-  const lineup = liveNamed_().map(function(r) {
-    return {
-      row: r.row, order: r.order, name: r.name, chat_name: r.chat_name, note: r.note,
-      show: r.show, status: r.status,
-      added_at: dateSafe_(r.added_at), on_stage_at: dateSafe_(r.on_stage_at), done_at: dateSafe_(r.done_at),
-      source: r.source, mc_note: r.mc_note
-    };
-  });
-  return Object.assign({ ok: true, lineup: lineup }, readPayload_());
+  try {
+    if (String(pin || '') !== MC_PIN) return { ok: false, error: 'wrong or missing PIN' };
+    const lineup = liveNamed_().map(function(r) {
+      return {
+        row: r.row, order: r.order, name: r.name, chat_name: r.chat_name, note: r.note,
+        show: r.show, status: r.status,
+        added_at: dateSafe_(r.added_at), on_stage_at: dateSafe_(r.on_stage_at), done_at: dateSafe_(r.done_at),
+        source: r.source, mc_note: r.mc_note
+      };
+    });
+    return Object.assign({ ok: true, lineup: lineup }, readPayload_());
+  } catch (err) {
+    return { ok: false, error: 'server exception: ' + (err &amp;&amp; err.message ? err.message : String(err)) };
+  }
 }
 
 function mcAction(params) {
-  return handleAction_(params || {});
+  try {
+    return handleAction_(params || {});
+  } catch (err) {
+    return { ok: false, error: 'server exception: ' + (err &amp;&amp; err.message ? err.message : String(err)) };
+  }
 }
 
 function handleAction_(params) {
@@ -762,20 +770,26 @@ function load(){
           '&lt;button class="ghost" onclick="act(\\'done\\',\\''+esc(r.name)+'\\')"&gt;Done&lt;/button&gt;'+
         '&lt;/div&gt;&lt;/div&gt;';
     }).join(''):'&lt;p class="mut"&gt;List is empty.&lt;/p&gt;';
-  }).catch(function(){
-    errEl.textContent='Could not reach the deck. Retrying...';
+  }).catch(function(err){
+    errEl.textContent='RPC failed: '+(err&amp;&amp;err.message?err.message:JSON.stringify(err));
   });
 }
 
 function doAction(params){
   if(busy)return;
   busy=true;
-  runServer('mcAction',Object.assign({pin:PIN},params)).then(function(){
+  errEl.textContent='Working...';
+  runServer('mcAction',Object.assign({pin:PIN},params)).then(function(result){
     busy=false;
+    if(result&amp;&amp;result.ok===false){
+      errEl.textContent='Server said: '+(result.error||'action did not succeed');
+    } else {
+      errEl.textContent='';
+    }
     load();
-  }).catch(function(){
+  }).catch(function(err){
     busy=false;
-    errEl.textContent='Action failed. Try again.';
+    errEl.textContent='RPC failed: '+(err&amp;&amp;err.message?err.message:JSON.stringify(err));
   });
 }
 
