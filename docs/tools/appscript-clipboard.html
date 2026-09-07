@@ -383,9 +383,22 @@ function readPayload_() {
 // Public entry points for google.script.run from the MC deck (HtmlService
 // sandboxed iframe). Functions ending in "_" are hidden from google.script.run,
 // so these thin wrappers are the exposed surface.
+function dateSafe_(v) {
+  if (v instanceof Date) return v.toISOString();
+  return v == null ? '' : v;
+}
+
 function mcData(pin) {
   if (String(pin || '') !== MC_PIN) return { ok: false, error: 'wrong or missing PIN' };
-  return Object.assign({ ok: true, lineup: liveNamed_() }, readPayload_());
+  const lineup = liveNamed_().map(function(r) {
+    return {
+      row: r.row, order: r.order, name: r.name, chat_name: r.chat_name, note: r.note,
+      show: r.show, status: r.status,
+      added_at: dateSafe_(r.added_at), on_stage_at: dateSafe_(r.on_stage_at), done_at: dateSafe_(r.done_at),
+      source: r.source, mc_note: r.mc_note
+    };
+  });
+  return Object.assign({ ok: true, lineup: lineup }, readPayload_());
 }
 
 function mcAction(params) {
