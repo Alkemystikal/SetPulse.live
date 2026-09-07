@@ -58,7 +58,7 @@ const TAB_LINEUP = 'LINEUP';
 const DEFAULT_SHOW = 'Comedy Simulator';
 const SLOT_MAX = 20;
 const MC_PIN = '4177';
-const PROTECTED_ACTIONS = ['insert', 'move', 'now', 'on_stage', 'now_performing', 'next', 'done', 'clear', 'cut', 'no_show', 'sync', 'open_signups', 'close_signups'];
+const PROTECTED_ACTIONS = ['insert', 'move', 'now', 'on_stage', 'now_performing', 'next', 'done', 'clear', 'cut', 'no_show', 'sync', 'open_signups', 'close_signups', 'begin_show', 'cue_next'];
 const SIGNUPS_OPEN_PROP = 'signups_open';
 
 function signupsOpen_() {
@@ -395,6 +395,25 @@ function handleAction_(params) {
     return Object.assign({ ok: true }, readPayload_());
   }
 
+  if (action === 'begin_show') {
+    const waiting = liveNamed_().filter(r =&gt; r.status === 'waiting' || r.status === 'next');
+    if (waiting.length) {
+      mcRows_().filter(r =&gt; r.status === 'on_stage').forEach(r =&gt; writeMcStatus_(r.name, 'done'));
+      writeMcStatus_(waiting[0].name, 'on_stage');
+      mirrorMcToLineup_();
+    }
+    return Object.assign({ ok: true }, readPayload_());
+  }
+
+  if (action === 'cue_next') {
+    const waiting = liveNamed_().filter(r =&gt; r.status === 'waiting');
+    if (waiting.length) {
+      writeMcStatus_(waiting[0].name, 'next');
+      mirrorMcToLineup_();
+    }
+    return Object.assign({ ok: true }, readPayload_());
+  }
+
   if (action === 'sync') {
     syncAll();
     return Object.assign({ ok: true }, readPayload_());
@@ -622,6 +641,12 @@ input{width:100%;min-height:44px;border:0;border-radius:10px;padding:0 12px;marg
 &lt;button class="ghost" id="toggleSignups"&gt;Signups: ...&lt;/button&gt;
 &lt;/div&gt;
 &lt;div class="row"&gt;
+&lt;div class="btns"&gt;
+&lt;button class="go" id="beginShow"&gt;Begin Simulation&lt;/button&gt;
+&lt;button class="ghost" id="cueNext"&gt;Cue Next Comic&lt;/button&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="row"&gt;
 &lt;input id="walk" placeholder="Walk-up name"&gt;
 &lt;input id="spot" type="number" min="1" placeholder="Insert at # (blank = end)"&gt;
 &lt;button class="go" id="add"&gt;Add / insert&lt;/button&gt;
@@ -670,6 +695,14 @@ document.getElementById('add').onclick=async()=&gt;{
 document.getElementById('toggleSignups').onclick=async()=&gt;{
   const action=signupsOpen?'close_signups':'open_signups';
   await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,pin:PIN})});
+  load();
+};
+document.getElementById('beginShow').onclick=async()=&gt;{
+  await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'begin_show',pin:PIN})});
+  load();
+};
+document.getElementById('cueNext').onclick=async()=&gt;{
+  await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cue_next',pin:PIN})});
   load();
 };
 load();
