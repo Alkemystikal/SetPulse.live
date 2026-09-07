@@ -24,6 +24,8 @@
   .performers { display: flex; flex-direction: column; gap: 10px; }
   .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 14px; }
   .card .name { font-weight: 700; font-size: 1.02rem; }
+  .card .name a.comiclink { color: #f0eafa; text-decoration: none; border-bottom: 1px dashed #8a7ba0; }
+  .card .name a.comiclink:hover { color: #ff7a00; border-bottom-color: #ff7a00; }
   .card .meta { color: #b8a9cc; font-size: .82rem; margin-top: 2px; }
   .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 8px; background: rgba(255,255,255,0.08); }
   .bar .pos { background: #39ff14; }
@@ -123,7 +125,7 @@ fetch('stats.json').then(r => r.json()).then(stats => {
     const pct = n => total ? (100 * n / total).toFixed(1) : 0;
     const dur = fmtT(p.started_video_t) + ' – ' + fmtT(p.ended_video_t);
     return `<div class="card">
-      <div class="name">${p.name}</div>
+      <div class="name"><a href="#" class="comiclink" onclick="jumpToComic(${JSON.stringify(p.name)});return false;">${p.name}</a></div>
       <div class="meta">On stage ${dur} · ${p.mentions_gated || 0} mention(s)</div>
       <div class="bar">
         <div class="pos" style="width:${pct(c.pos)}%"></div>
@@ -143,6 +145,13 @@ document.getElementById('searchBox').addEventListener('input', (e) => {
   const q = e.target.value.trim();
   searchTimer = setTimeout(() => runSearch(q), 200);
 });
+
+function jumpToComic(name) {
+  const box = document.getElementById('searchBox');
+  box.value = name;
+  runSearch(name);
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 async function runSearch(q) {
   const status = document.getElementById('searchStatus');
