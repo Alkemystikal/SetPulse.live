@@ -1,0 +1,142 @@
+{
+  "performers": [
+    {
+      "name": "Chino LaForge & Bashar",
+      "started_video_t": 336.0,
+      "ended_video_t": 927.0,
+      "chat": {
+        "pos": 26,
+        "neg": 15,
+        "neu": 51,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Shane Nelson & Jackson Babine",
+      "started_video_t": 934.0,
+      "ended_video_t": 1613.0,
+      "chat": {
+        "pos": 72,
+        "neg": 39,
+        "neu": 110,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Joel Hewins & Abby Rose",
+      "started_video_t": 1621.0,
+      "ended_video_t": 2308.0,
+      "chat": {
+        "pos": 89,
+        "neg": 69,
+        "neu": 126,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Sasha & Craig",
+      "started_video_t": 2315.0,
+      "ended_video_t": 3202.0,
+      "chat": {
+        "pos": 70,
+        "neg": 39,
+        "neu": 149,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Eddie V & Erin",
+      "started_video_t": 3203.0,
+      "ended_video_t": 3447.0,
+      "chat": {
+        "pos": 15,
+        "neg": 21,
+        "neu": 55,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Morgen Thomasian & Jamie",
+      "started_video_t": 3455.0,
+      "ended_video_t": 3723.0,
+      "chat": {
+        "pos": 25,
+        "neg": 11,
+        "neu": 38,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Jimbo & John Calle",
+      "started_video_t": 3732.0,
+      "ended_video_t": 4347.0,
+      "chat": {
+        "pos": 57,
+        "neg": 34,
+        "neu": 129,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Mister E & Brady",
+      "started_video_t": 4350.0,
+      "ended_video_t": 5006.0,
+      "chat": {
+        "pos": 70,
+        "neg": 38,
+        "neu": 134,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Yej & Shane Nelson",
+      "started_video_t": 5010.0,
+      "ended_video_t": 5630.0,
+      "chat": {
+        "pos": 35,
+        "neg": 41,
+        "neu": 95,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Chino LaForge & Bender",
+      "started_video_t": 5646.0,
+      "ended_video_t": 6166.0,
+      "chat": {
+        "pos": 36,
+        "neg": 32,
+        "neu": 84,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Chino LaForge",
+      "started_video_t": 6168.0,
+      "ended_video_t": 7151.0,
+      "chat": {
+        "pos": 50,
+        "neg": 8,
+        "neu": 78,
+        "format": 0
+      },
+      "mentions_gated": 52
+    }
+  ],
+  "room": {
+    "pos": 553,
+    "neg": 351,
+    "neu": 1069,
+    "format": 0
+  }
+}
