@@ -125,7 +125,7 @@ fetch('stats.json').then(r => r.json()).then(stats => {
     const pct = n => total ? (100 * n / total).toFixed(1) : 0;
     const dur = fmtT(p.started_video_t) + ' – ' + fmtT(p.ended_video_t);
     return `<div class="card">
-      <div class="name"><a href="#" class="comiclink" onclick="jumpToComic(${JSON.stringify(p.name)});return false;">${p.name}</a></div>
+      <div class="name"><a href="?comic=${encodeURIComponent(p.name)}" class="comiclink" onclick="jumpToComic(${JSON.stringify(p.name)});return false;">${p.name}</a></div>
       <div class="meta">On stage ${dur} · ${p.mentions_gated || 0} mention(s)</div>
       <div class="bar">
         <div class="pos" style="width:${pct(c.pos)}%"></div>
@@ -151,7 +151,17 @@ function jumpToComic(name) {
   box.value = name;
   runSearch(name);
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const url = new URL(location.href);
+  url.searchParams.set('comic', name);
+  history.replaceState(null, '', url);
 }
+
+// Comic links are now real URLs (?comic=Name) so right-click → open in
+// new tab, copy link, or a shared/bookmarked link all work — not just a
+// same-tab onclick. If the page loads with that param already set (any
+// of those paths), run the same jump immediately.
+const initialComic = new URLSearchParams(location.search).get('comic');
+if (initialComic) jumpToComic(initialComic);
 
 async function runSearch(q) {
   const status = document.getElementById('searchStatus');
