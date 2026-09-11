@@ -43,6 +43,8 @@
  *   { action:"now"|"on_stage", name }
  *   { action:"next", name }
  *   { action:"done", name }
+ *   { action:"remove", name }        drops them from the list entirely, frees their slot
+ *   { action:"finish_show" }         archives the whole list to ARCHIVE, then clears it
  *   { action:"sync" }          copy SIGNUPS → MC_DECK → LINEUP
  *
  * GET
@@ -55,10 +57,12 @@
 const TAB_SIGNUPS = 'SIGNUPS';
 const TAB_MC = 'MC_DECK';
 const TAB_LINEUP = 'LINEUP';
+const TAB_ARCHIVE = 'ARCHIVE';
 const DEFAULT_SHOW = 'Comedy Simulator';
-const SLOT_MAX = 20;
+const SLOT_START = 10;
+const SLOT_STEP = 5;
 const MC_PIN = '4177';
-const PROTECTED_ACTIONS = ['insert', 'move', 'now', 'on_stage', 'now_performing', 'next', 'done', 'clear', 'cut', 'no_show', 'sync', 'open_signups', 'close_signups', 'begin_show', 'cue_next', 'set_theme'];
+const PROTECTED_ACTIONS = ['insert', 'move', 'now', 'on_stage', 'now_performing', 'next', 'done', 'clear', 'cut', 'no_show', 'remove', 'sync', 'open_signups', 'close_signups', 'begin_show', 'cue_next', 'set_theme', 'finish_show'];
 const SIGNUPS_OPEN_PROP = 'signups_open';
 const THEME_PROP = 'theme';
 
@@ -81,6 +85,7 @@ function setTheme_(theme) {
 const SIGNUP_HEADERS = ['Timestamp', 'Stage Name', 'Chat Name', 'Note', 'Source', 'Show', 'Channel', 'Synced', 'Signup ID'];
 const MC_HEADERS = ['Order', 'Stage Name', 'Chat Name', 'Note', 'Show', 'Status', 'Added', 'On stage', 'Done', 'Source', 'MC note'];
 const LINEUP_HEADERS = ['order', 'name', 'note', 'show', 'status', 'added_at', 'on_stage_at', 'done_at', 'source'];
+const ARCHIVE_HEADERS = ['Archived At', 'Order', 'Stage Name', 'Chat Name', 'Note', 'Show', 'Status', 'Added', 'On stage', 'Done', 'Source', 'MC note'];
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -125,6 +130,7 @@ function ensureTabs() {
   sheetWithHeaders_(ss, TAB_SIGNUPS, SIGNUP_HEADERS);
   sheetWithHeaders_(ss, TAB_MC, MC_HEADERS);
   sheetWithHeaders_(ss, TAB_LINEUP, LINEUP_HEADERS);
+  sheetWithHeaders_(ss, TAB_ARCHIVE, ARCHIVE_HEADERS);
 }
 
 function sheetWithHeaders_(ss, tab, headers) {
@@ -154,6 +160,10 @@ function mcSheet_() {
 
 function lineupSheet_() {
   return sheetWithHeaders_(SpreadsheetApp.getActive(), TAB_LINEUP, LINEUP_HEADERS);
+}
+
+function archiveSheet_() {
+  return sheetWithHeaders_(SpreadsheetApp.getActive(), TAB_ARCHIVE, ARCHIVE_HEADERS);
 }
 
 function signupsSheet_() {
@@ -217,23 +227,40 @@ function signupRows_() {
 
 function isLiveStatus_(status) {
   const s = String(status || '').toLowerCase();
-  return s !== 'done' &amp;&amp; s !== 'cut' &amp;&amp; s !== 'no_show';
+  return s !== 'done' &amp;&amp; s !== 'cut' &amp;&amp; s !== 'no_show' &amp;&amp; s !== 'removed';
+}
+
+function takenCount_() {
+  return liveNamed_().filter(function(r) { return isLiveStatus_(r.status); }).length;
+}
+
+// Slots start at SLOT_START and grow by SLOT_STEP whenever the list
+// fills up, instead of a fixed cap - recomputed fresh each time from
+// how many are currently taken, so it self-corrects if people are
+// removed/cut and never needs a manual "add slots" step.
+function currentSlotCap_() {
+  const taken = takenCount_();
+  let cap = SLOT_START;
+  while (taken &gt;= cap) cap += SLOT_STEP;
+  return cap;
 }
 
 function takenSlots_() {
   const map = {};
+  const cap = currentSlotCap_();
   liveNamed_().forEach(r =&gt; {
     if (!isLiveStatus_(r.status)) return;
     const o = parseInt(r.order, 10);
-    if (o &gt;= 1 &amp;&amp; o &lt;= SLOT_MAX) map[o] = r.name;
+    if (o &gt;= 1 &amp;&amp; o &lt;= cap) map[o] = r.name;
   });
   return map;
 }
 
 function slotsPayload_() {
   const taken = takenSlots_();
+  const cap = currentSlotCap_();
   const slots = [];
-  for (let i = 1; i &lt;= SLOT_MAX; i++) {
+  for (let i = 1; i &lt;= cap; i++) {
     slots.push({ order: i, open: !taken[i], name: taken[i] || '' });
   }
   return slots;
@@ -241,14 +268,16 @@ function slotsPayload_() {
 
 function firstOpenSlot_() {
   const taken = takenSlots_();
-  for (let i = 1; i &lt;= SLOT_MAX; i++) if (!taken[i]) return i;
+  const cap = currentSlotCap_();
+  for (let i = 1; i &lt;= cap; i++) if (!taken[i]) return i;
   return 0;
 }
 
 function occupySlot_(name, note, show, source, chatName, atOrder) {
   const dest = parseInt(atOrder, 10);
-  if (!(dest &gt;= 1 &amp;&amp; dest &lt;= SLOT_MAX)) {
-    return { ok: false, error: 'pick a slot 1-20', slots: slotsPayload_() };
+  const cap = currentSlotCap_();
+  if (!(dest &gt;= 1 &amp;&amp; dest &lt;= cap)) {
+    return { ok: false, error: 'pick a slot 1-' + cap, slots: slotsPayload_() };
   }
   const taken = takenSlots_();
   const existing = liveNamed_().find(r =&gt; r.name.toLowerCase() === String(name).toLowerCase() &amp;&amp; isLiveStatus_(r.status));
@@ -278,7 +307,7 @@ function addMcRow_(name, note, show, source, chatName, atOrder) {
   const { sh } = mcSheet_();
   const now = new Date();
   const dest = parseInt(atOrder, 10);
-  const order = dest &gt; 0 ? Math.min(dest, SLOT_MAX) : (firstOpenSlot_() || all.length + 1);
+  const order = dest &gt; 0 ? Math.min(dest, currentSlotCap_()) : (firstOpenSlot_() || all.length + 1);
   sh.appendRow([order, name, chatName || '', note || '', show || DEFAULT_SHOW, 'waiting', now, '', '', source || 'form', '']);
   if (dest &gt; 0) placeAt_(name, dest);
   return { name: name, status: 'waiting', order: order };
@@ -363,6 +392,29 @@ function syncAll() {
   mirrorMcToLineup_();
 }
 
+// Archives every current MC_DECK row (whatever its status) to the
+// ARCHIVE tab with a timestamp, then clears MC_DECK/LINEUP and closes
+// signups/resets the theme for the next show. Nothing is deleted for
+// good - it is all sitting in ARCHIVE.
+function finishShow_() {
+  const rows = mcRows_();
+  if (rows.length) {
+    const { sh: archiveSh } = archiveSheet_();
+    const archivedAt = new Date();
+    const values = rows.map(function(r) {
+      return [archivedAt, r.order, r.name, r.chat_name, r.note, r.show || DEFAULT_SHOW, r.status || 'waiting',
+        r.added_at, r.on_stage_at, r.done_at, r.source || '', r.mc_note || ''];
+    });
+    archiveSh.getRange(archiveSh.getLastRow() + 1, 1, values.length, ARCHIVE_HEADERS.length).setValues(values);
+  }
+  const { sh: mcSh, headerRow: mcHeaderRow } = mcSheet_();
+  const last = mcSh.getLastRow();
+  if (last &gt; mcHeaderRow) mcSh.getRange(mcHeaderRow + 1, 1, last - mcHeaderRow, MC_HEADERS.length).clearContent();
+  mirrorMcToLineup_();
+  setSignupsOpen_(false);
+  setTheme_('');
+}
+
 function obsPayload_() {
   const all = mcRows_().sort((a, b) =&gt; Number(a.order || 0) - Number(b.order || 0));
   const waiting = all.filter(r =&gt; r.status === 'waiting' || r.status === 'next');
@@ -391,7 +443,9 @@ function dateSafe_(v) {
 function mcData(pin) {
   try {
     if (String(pin || '') !== MC_PIN) return { ok: false, error: 'wrong or missing PIN' };
-    const lineup = liveNamed_().map(function(r) {
+    const lineup = liveNamed_().filter(function(r) {
+      return String(r.status || '').toLowerCase() !== 'removed';
+    }).map(function(r) {
       return {
         row: r.row, order: r.order, name: r.name, chat_name: r.chat_name, note: r.note,
         show: r.show, status: r.status,
@@ -496,6 +550,11 @@ function handleAction_(params) {
   } else if (action === 'cut' || action === 'no_show') {
     if (name) writeMcStatus_(name, action);
     mirrorMcToLineup_();
+  } else if (action === 'remove') {
+    if (name) writeMcStatus_(name, 'removed');
+    mirrorMcToLineup_();
+  } else if (action === 'finish_show') {
+    finishShow_();
   }
 
   return Object.assign({ ok: true }, readPayload_());
@@ -688,6 +747,7 @@ h1{font-size:1.2rem;margin:0 0 4px;color:var(--orange)}
 .btnrow button{flex:1;min-height:42px;border:0;border-radius:10px;font-weight:700}
 .go{background:var(--orange);color:#111}.ghost{background:rgba(255,255,255,0.08);color:#fff}
 .on{background:var(--green);color:#111}
+.danger{background:rgba(255,107,107,0.15);color:#ff6b6b}
 input{width:100%;min-height:44px;border:0;border-radius:10px;padding:0 12px;margin:6px 0;font-size:1rem}
 .who{font-weight:700;font-size:1.02rem}
 .badge{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,0.1);color:var(--mut);margin-left:6px}
@@ -721,6 +781,9 @@ h2{font-size:.95rem;color:var(--orange);margin:20px 0 8px}
   &lt;input id="walk" placeholder="Walk-up name"&gt;
   &lt;input id="spot" type="number" min="1" placeholder="Insert at # (blank = end)"&gt;
   &lt;button class="go" id="add" style="width:100%"&gt;Add / insert&lt;/button&gt;
+&lt;/div&gt;
+&lt;div class="card"&gt;
+  &lt;button class="danger" id="finishShow" style="width:100%"&gt;Finish Show&lt;/button&gt;
 &lt;/div&gt;
 
 &lt;h2&gt;Lineup&lt;/h2&gt;
@@ -769,6 +832,7 @@ function load(){
           '&lt;button class="ghost" onclick="act(\\'next\\',\\''+esc(r.name)+'\\')"&gt;Next&lt;/button&gt;'+
           '&lt;button class="go" onclick="act(\\'on_stage\\',\\''+esc(r.name)+'\\')"&gt;On stage&lt;/button&gt;'+
           '&lt;button class="ghost" onclick="act(\\'done\\',\\''+esc(r.name)+'\\')"&gt;Done&lt;/button&gt;'+
+          '&lt;button class="danger" onclick="removeComic(\\''+esc(r.name)+'\\')"&gt;Remove&lt;/button&gt;'+
         '&lt;/div&gt;&lt;/div&gt;';
     }).join(''):'&lt;p class="mut"&gt;List is empty.&lt;/p&gt;';
   }).catch(function(err){
@@ -796,6 +860,11 @@ function doAction(params){
 
 function act(action,name){ doAction({action:action,name:name}); }
 
+function removeComic(name){
+  if(!confirm('Remove '+name+' from the list?'))return;
+  doAction({action:'remove',name:name});
+}
+
 document.getElementById('add').onclick=function(){
   const name=document.getElementById('walk').value.trim();
   if(!name)return;
@@ -816,6 +885,10 @@ document.getElementById('cueNext').onclick=function(){
 };
 document.getElementById('setTheme').onclick=function(){
   doAction({action:'set_theme',theme:document.getElementById('theme').value.trim()});
+};
+document.getElementById('finishShow').onclick=function(){
+  if(!confirm('Finish the show? This clears the list (it is archived first, nothing is lost).'))return;
+  doAction({action:'finish_show'});
 };
 load();
 setInterval(load,8000);
