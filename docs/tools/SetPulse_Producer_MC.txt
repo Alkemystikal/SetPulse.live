@@ -1,0 +1,879 @@
+/**
+ * SetPulse - Producer signup + MC deck + OBS
+ *
+ * Bind this script to the Producer Signup spreadsheet.
+ *
+ * Tabs
+ *   SIGNUPS  raw public form / list / QR / IG entries
+ *   MC_DECK  what the MC edits (order, status, walk-ups)
+ *   LINEUP   producer / OBS board (kept in sync with MC_DECK)
+ *
+ * Deploy
+ *   1. Extensions → Apps Script → paste this file → Save
+ *   2. Deploy → New deployment → Web app
+ *      Execute as: Me
+ *      Who has access: Anyone
+ *   3. Paste the web app URL into SHARE!B7 and into the public list / MC HTML pages
+ *
+ * Public form
+ *   Link the Google Form responses to this spreadsheet.
+ *   If Google names the tab "Form Responses 1", either rename it SIGNUPS
+ *   or set TAB_SIGNUPS below to that name.
+ *
+ * POST body (JSON)
+ *   { action:"queue", name, note, show, source, chat_name, order }
+ *   { action:"insert"|"move", name, order }   put name at that spot; everyone at/after slides down
+ *   { action:"now"|"on_stage", name }
+ *   { action:"next", name }
+ *   { action:"done", name }
+ *   { action:"remove", name }        drops them from the list entirely, frees their slot
+ *   { action:"finish_show" }         archives the whole list to ARCHIVE, then clears it
+ *   { action:"sync" }          copy SIGNUPS → MC_DECK → LINEUP
+ *
+ * GET
+ *   ?format=obs            now / next / on_deck
+ *   ?format=full           lineup + obs
+ *   ?page=signup           public HTML form
+ *   ?page=mc               MC phone deck
+ */
+
+const TAB_SIGNUPS = 'SIGNUPS';
+const TAB_MC = 'MC_DECK';
+const TAB_LINEUP = 'LINEUP';
+const TAB_ARCHIVE = 'ARCHIVE';
+const DEFAULT_SHOW = 'Comedy Simulator';
+const SLOT_START = 10;
+const SLOT_STEP = 5;
+const MC_PIN = '4177';
+const PROTECTED_ACTIONS = ['insert', 'move', 'now', 'on_stage', 'now_performing', 'next', 'done', 'clear', 'cut', 'no_show', 'remove', 'sync', 'open_signups', 'close_signups', 'begin_show', 'cue_next', 'set_theme', 'finish_show'];
+const SIGNUPS_OPEN_PROP = 'signups_open';
+const THEME_PROP = 'theme';
+
+function signupsOpen_() {
+  return PropertiesService.getScriptProperties().getProperty(SIGNUPS_OPEN_PROP) === 'true';
+}
+
+function setSignupsOpen_(open) {
+  PropertiesService.getScriptProperties().setProperty(SIGNUPS_OPEN_PROP, open ? 'true' : 'false');
+}
+
+function theme_() {
+  return PropertiesService.getScriptProperties().getProperty(THEME_PROP) || '';
+}
+
+function setTheme_(theme) {
+  PropertiesService.getScriptProperties().setProperty(THEME_PROP, String(theme || '').slice(0, 120));
+}
+
+const SIGNUP_HEADERS = ['Timestamp', 'Stage Name', 'Chat Name', 'Note', 'Source', 'Show', 'Channel', 'Synced', 'Signup ID'];
+const MC_HEADERS = ['Order', 'Stage Name', 'Chat Name', 'Note', 'Show', 'Status', 'Added', 'On stage', 'Done', 'Source', 'MC note'];
+const LINEUP_HEADERS = ['order', 'name', 'note', 'show', 'status', 'added_at', 'on_stage_at', 'done_at', 'source'];
+const ARCHIVE_HEADERS = ['Archived At', 'Order', 'Stage Name', 'Chat Name', 'Note', 'Show', 'Status', 'Added', 'On stage', 'Done', 'Source', 'MC note'];
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('SetPulse')
+    .addItem('Sync signups → MC → LINEUP', 'syncAll')
+    .addItem('Renumber list 1...n', 'renumberList')
+    .addItem('Ensure tabs', 'ensureTabs')
+    .addToUi();
+}
+
+function onFormSubmit(e) {
+  // Google Forms usually writes the response before this runs.
+  syncSignupsToMc_();
+  mirrorMcToLineup_();
+}
+
+function onEdit(e) {
+  if (!e || !e.range) return;
+  if (e.range.getSheet().getName() !== TAB_MC) return;
+  const col = e.range.getColumn();
+  const row = e.range.getRow();
+  if (row < 3) return;
+  const sh = e.range.getSheet();
+  const stage = String(sh.getRange(row, 2).getValue() || '').trim();
+  if (col === 6) stampStatus_(sh, row, String(e.value || ''));
+  // Order cell changed on a named row → move that comic into the new spot; others slide.
+  if (col === 1 && stage) {
+    const dest = parseInt(e.value, 10);
+    if (dest > 0) placeAt_(stage, dest);
+  }
+  // New name typed onto a row that already has an Order → insert at that spot.
+  if (col === 2 && stage) {
+    const dest = parseInt(sh.getRange(row, 1).getValue(), 10);
+    if (dest > 0) placeAt_(stage, dest);
+    else addMcRow_(stage, String(sh.getRange(row, 4).getValue() || ''), DEFAULT_SHOW, 'mc', '');
+  }
+  mirrorMcToLineup_();
+}
+
+function ensureTabs() {
+  const ss = SpreadsheetApp.getActive();
+  sheetWithHeaders_(ss, TAB_SIGNUPS, SIGNUP_HEADERS);
+  sheetWithHeaders_(ss, TAB_MC, MC_HEADERS);
+  sheetWithHeaders_(ss, TAB_LINEUP, LINEUP_HEADERS);
+  sheetWithHeaders_(ss, TAB_ARCHIVE, ARCHIVE_HEADERS);
+}
+
+function sheetWithHeaders_(ss, tab, headers) {
+  let sh = ss.getSheetByName(tab);
+  if (!sh) sh = ss.insertSheet(tab);
+  const existing = sh.getRange(2, 1, 1, headers.length).getValues()[0];
+    // Row 1 is a banner on the xlsx; headers live on row 2.
+  const row1 = sh.getRange(1, 1).getValue();
+  const headerRow = (String(row1).toLowerCase().indexOf('order') === 0 || String(row1).toLowerCase().indexOf('timestamp') === 0) ? 1 : 2;
+  const have = sh.getRange(headerRow, 1, 1, headers.length).getValues()[0].join('|').toLowerCase();
+  if (!have || have.split('|').filter(Boolean).length < 3) {
+    sh.getRange(headerRow, 1, 1, headers.length).setValues([headers]);
+    sh.setFrozenRows(headerRow);
+  }
+  return { sh: sh, headerRow: headerRow };
+}
+
+function headerRowOf_(sh, fallback) {
+  const a1 = String(sh.getRange(1, 1).getValue() || '').toLowerCase();
+  if (a1 === 'order' || a1 === 'timestamp' || a1 === 'order'.toLowerCase()) return 1;
+  return fallback || 2;
+}
+
+function mcSheet_() {
+  return sheetWithHeaders_(SpreadsheetApp.getActive(), TAB_MC, MC_HEADERS);
+}
+
+function lineupSheet_() {
+  return sheetWithHeaders_(SpreadsheetApp.getActive(), TAB_LINEUP, LINEUP_HEADERS);
+}
+
+function archiveSheet_() {
+  return sheetWithHeaders_(SpreadsheetApp.getActive(), TAB_ARCHIVE, ARCHIVE_HEADERS);
+}
+
+function signupsSheet_() {
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName(TAB_SIGNUPS);
+  if (!sh) sh = ss.getSheetByName('Form Responses 1') || ss.insertSheet(TAB_SIGNUPS);
+  return sheetWithHeaders_(ss, sh.getName(), SIGNUP_HEADERS);
+}
+
+function readNamedRows_(sh, headerRow, mapFn) {
+  const last = sh.getLastRow();
+  if (last <= headerRow) return [];
+  const width = sh.getLastColumn();
+  const values = sh.getRange(headerRow + 1, 1, last - headerRow, width).getValues();
+  return values.map((r, i) => mapFn(r, headerRow + 1 + i)).filter(Boolean);
+}
+
+function mcRows_() {
+  const { sh, headerRow } = mcSheet_();
+  return readNamedRows_(sh, headerRow, (r, row) => {
+    const name = String(r[1] || '').trim();
+    if (!name) return null;
+    return {
+      row: row,
+      order: r[0],
+      name: name,
+      chat_name: String(r[2] || ''),
+      note: String(r[3] || ''),
+      show: String(r[4] || ''),
+      status: String(r[5] || 'waiting'),
+      added_at: r[6],
+      on_stage_at: r[7],
+      done_at: r[8],
+      source: r[9],
+      mc_note: r[10]
+    };
+  });
+}
+
+function signupRows_() {
+  const { sh, headerRow } = signupsSheet_();
+  // Support both our schema and a raw Google Form schema
+  // Our: Timestamp | Stage Name | Chat Name | Note | Source | Show | Channel | Synced | Signup ID
+  // Form: Timestamp | Stage name | Chat name | Note
+  return readNamedRows_(sh, headerRow, (r, row) => {
+    const name = String(r[1] || '').trim();
+    if (!name) return null;
+    return {
+      row: row,
+      timestamp: r[0],
+      name: name,
+      chat_name: String(r[2] || ''),
+      note: String(r[3] || ''),
+      source: String(r[4] || 'form'),
+      show: String(r[5] || DEFAULT_SHOW),
+      channel: String(r[6] || 'form'),
+      synced: String(r[7] || 'no').toLowerCase()
+    };
+  });
+}
+
+function isLiveStatus_(status) {
+  const s = String(status || '').toLowerCase();
+  return s !== 'done' && s !== 'cut' && s !== 'no_show' && s !== 'removed';
+}
+
+function takenCount_() {
+  return liveNamed_().filter(function(r) { return isLiveStatus_(r.status); }).length;
+}
+
+// Slots start at SLOT_START and grow by SLOT_STEP whenever the list
+// fills up, instead of a fixed cap - recomputed fresh each time from
+// how many are currently taken, so it self-corrects if people are
+// removed/cut and never needs a manual "add slots" step.
+function currentSlotCap_() {
+  const taken = takenCount_();
+  let cap = SLOT_START;
+  while (taken >= cap) cap += SLOT_STEP;
+  return cap;
+}
+
+function takenSlots_() {
+  const map = {};
+  const cap = currentSlotCap_();
+  liveNamed_().forEach(r => {
+    if (!isLiveStatus_(r.status)) return;
+    const o = parseInt(r.order, 10);
+    if (o >= 1 && o <= cap) map[o] = r.name;
+  });
+  return map;
+}
+
+function slotsPayload_() {
+  const taken = takenSlots_();
+  const cap = currentSlotCap_();
+  const slots = [];
+  for (let i = 1; i <= cap; i++) {
+    slots.push({ order: i, open: !taken[i], name: taken[i] || '' });
+  }
+  return slots;
+}
+
+function firstOpenSlot_() {
+  const taken = takenSlots_();
+  const cap = currentSlotCap_();
+  for (let i = 1; i <= cap; i++) if (!taken[i]) return i;
+  return 0;
+}
+
+function occupySlot_(name, note, show, source, chatName, atOrder) {
+  const dest = parseInt(atOrder, 10);
+  const cap = currentSlotCap_();
+  if (!(dest >= 1 && dest <= cap)) {
+    return { ok: false, error: 'pick a slot 1-' + cap, slots: slotsPayload_() };
+  }
+  const taken = takenSlots_();
+  const existing = liveNamed_().find(r => r.name.toLowerCase() === String(name).toLowerCase() && isLiveStatus_(r.status));
+  if (existing && Number(existing.order) === dest) {
+    return { ok: true, already: true, order: dest, slots: slotsPayload_() };
+  }
+  if (taken[dest] && (!existing || taken[dest].toLowerCase() !== String(name).toLowerCase())) {
+    return { ok: false, error: 'slot ' + dest + ' is taken', slots: slotsPayload_() };
+  }
+  if (existing) {
+    const { sh } = mcSheet_();
+    sh.getRange(existing.row, 1).setValue(dest);
+    return { ok: true, order: dest, slots: slotsPayload_() };
+  }
+  const { sh } = mcSheet_();
+  sh.appendRow([dest, name, chatName || '', note || '', show || DEFAULT_SHOW, 'waiting', new Date(), '', '', source || 'list', '']);
+  return { ok: true, order: dest, slots: slotsPayload_() };
+}
+
+function addMcRow_(name, note, show, source, chatName, atOrder) {
+  const all = mcRows_();
+  const live = all.find(r => r.name.toLowerCase() === name.toLowerCase() && isLiveStatus_(r.status));
+  if (live) {
+    if (atOrder) placeAt_(name, atOrder);
+    return live;
+  }
+  const { sh } = mcSheet_();
+  const now = new Date();
+  const dest = parseInt(atOrder, 10);
+  const order = dest > 0 ? Math.min(dest, currentSlotCap_()) : (firstOpenSlot_() || all.length + 1);
+  sh.appendRow([order, name, chatName || '', note || '', show || DEFAULT_SHOW, 'waiting', now, '', '', source || 'form', '']);
+  if (dest > 0) placeAt_(name, dest);
+  return { name: name, status: 'waiting', order: order };
+}
+
+function liveNamed_() {
+  return mcRows_().slice().sort((a, b) => Number(a.order || 9999) - Number(b.order || 9999));
+}
+
+function placeAt_(name, dest) {
+  const target = Math.max(1, parseInt(dest, 10) || 1);
+  const { sh } = mcSheet_();
+  const named = liveNamed_();
+  const moving = named.find(r => r.name.toLowerCase() === String(name).toLowerCase());
+  if (!moving) return;
+  const without = named.filter(r => r.row !== moving.row);
+  const idx = Math.min(Math.max(target - 1, 0), without.length);
+  without.splice(idx, 0, moving);
+  without.forEach((r, i) => sh.getRange(r.row, 1).setValue(i + 1));
+}
+
+function compactOrders_() {
+  const { sh } = mcSheet_();
+  liveNamed_().forEach((r, i) => {
+    if (Number(r.order) !== i + 1) sh.getRange(r.row, 1).setValue(i + 1);
+  });
+}
+
+function renumberList() {
+  compactOrders_();
+  mirrorMcToLineup_();
+}
+
+function stampStatus_(sh, row, status) {
+  const now = new Date();
+  const s = String(status || '').toLowerCase();
+  if (s === 'on_stage') sh.getRange(row, 8).setValue(now);
+  if (s === 'done' || s === 'cut' || s === 'no_show') sh.getRange(row, 9).setValue(now);
+}
+
+function writeMcStatus_(name, status) {
+  const { sh } = mcSheet_();
+  const all = mcRows_();
+  const now = new Date();
+  let hit = all.find(r => r.name.toLowerCase() === name.toLowerCase());
+  if (!hit) {
+    addMcRow_(name, '', DEFAULT_SHOW, 'mc', '');
+    hit = mcRows_().find(r => r.name.toLowerCase() === name.toLowerCase());
+  }
+  if (!hit) return;
+  sh.getRange(hit.row, 6).setValue(status);
+  stampStatus_(sh, hit.row, status);
+}
+
+function syncSignupsToMc_() {
+  const { sh, headerRow } = signupsSheet_();
+  const rows = signupRows_();
+  rows.forEach(r => {
+    if (r.synced === 'yes') return;
+    addMcRow_(r.name, r.note, r.show, r.source || 'form', r.chat_name);
+    // Synced column is H (8) on our schema; skip if the form tab has fewer columns
+    if (sh.getLastColumn() >= 8) sh.getRange(r.row, 8).setValue('yes');
+  });
+}
+
+function mirrorMcToLineup_() {
+  const { sh, headerRow } = lineupSheet_();
+  const rows = mcRows_().sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  const last = sh.getLastRow();
+  if (last > headerRow) sh.getRange(headerRow + 1, 1, last - headerRow, LINEUP_HEADERS.length).clearContent();
+  if (!rows.length) return;
+  const values = rows.map(r => [
+    r.order, r.name, r.note, r.show || DEFAULT_SHOW, r.status || 'waiting',
+    r.added_at, r.on_stage_at, r.done_at, r.source || ''
+  ]);
+  sh.getRange(headerRow + 1, 1, values.length, LINEUP_HEADERS.length).setValues(values);
+}
+
+function syncAll() {
+  ensureTabs();
+  syncSignupsToMc_();
+  mirrorMcToLineup_();
+}
+
+// Archives every current MC_DECK row (whatever its status) to the
+// ARCHIVE tab with a timestamp, then clears MC_DECK/LINEUP and closes
+// signups/resets the theme for the next show. Nothing is deleted for
+// good - it is all sitting in ARCHIVE.
+function finishShow_() {
+  const rows = mcRows_();
+  if (rows.length) {
+    const { sh: archiveSh } = archiveSheet_();
+    const archivedAt = new Date();
+    const values = rows.map(function(r) {
+      return [archivedAt, r.order, r.name, r.chat_name, r.note, r.show || DEFAULT_SHOW, r.status || 'waiting',
+        r.added_at, r.on_stage_at, r.done_at, r.source || '', r.mc_note || ''];
+    });
+    archiveSh.getRange(archiveSh.getLastRow() + 1, 1, values.length, ARCHIVE_HEADERS.length).setValues(values);
+  }
+  const { sh: mcSh, headerRow: mcHeaderRow } = mcSheet_();
+  const last = mcSh.getLastRow();
+  if (last > mcHeaderRow) mcSh.getRange(mcHeaderRow + 1, 1, last - mcHeaderRow, MC_HEADERS.length).clearContent();
+  mirrorMcToLineup_();
+  setSignupsOpen_(false);
+  setTheme_('');
+}
+
+function obsPayload_() {
+  const all = mcRows_().sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  const waiting = all.filter(r => r.status === 'waiting' || r.status === 'next');
+  const on = all.find(r => r.status === 'on_stage');
+  const next = all.find(r => r.status === 'next') || waiting[0] || null;
+  return {
+    now: on ? on.name : '',
+    next: next && (!on || next.name !== on.name) ? next.name : (waiting[1] ? waiting[1].name : ''),
+    on_deck: waiting.slice(0, 8).map(r => r.name),
+    show: (on && on.show) || (waiting[0] && waiting[0].show) || DEFAULT_SHOW
+  };
+}
+
+function readPayload_() {
+  return { obs: obsPayload_(), slots: slotsPayload_(), signups_open: signupsOpen_(), theme: theme_() };
+}
+
+// Public entry points for google.script.run from the MC deck (HtmlService
+// sandboxed iframe). Functions ending in "_" are hidden from google.script.run,
+// so these thin wrappers are the exposed surface.
+function dateSafe_(v) {
+  if (v instanceof Date) return v.toISOString();
+  return v == null ? '' : v;
+}
+
+function mcData(pin) {
+  try {
+    if (String(pin || '') !== MC_PIN) return { ok: false, error: 'wrong or missing PIN' };
+    const lineup = liveNamed_().filter(function(r) {
+      return String(r.status || '').toLowerCase() !== 'removed';
+    }).map(function(r) {
+      return {
+        row: r.row, order: r.order, name: r.name, chat_name: r.chat_name, note: r.note,
+        show: r.show, status: r.status,
+        added_at: dateSafe_(r.added_at), on_stage_at: dateSafe_(r.on_stage_at), done_at: dateSafe_(r.done_at),
+        source: r.source, mc_note: r.mc_note
+      };
+    });
+    return Object.assign({ ok: true, lineup: lineup }, readPayload_());
+  } catch (err) {
+    return { ok: false, error: 'server exception: ' + (err && err.message ? err.message : String(err)) };
+  }
+}
+
+function mcAction(params) {
+  try {
+    return handleAction_(params || {});
+  } catch (err) {
+    return { ok: false, error: 'server exception: ' + (err && err.message ? err.message : String(err)) };
+  }
+}
+
+function handleAction_(params) {
+  const action = String(params.action || params.status || '').toLowerCase();
+  const name = String(params.name || params.current_performer || '').trim();
+  const note = String(params.note || '');
+  const show = String(params.show || DEFAULT_SHOW);
+  const source = String(params.source || 'list');
+  const chat = String(params.chat_name || params.chat || '');
+  const channel = String(params.channel || source);
+  const atOrder = parseInt(params.order || params.at || params.spot || 0, 10);
+  const pin = String(params.pin || '');
+
+  if (PROTECTED_ACTIONS.indexOf(action) !== -1 && pin !== MC_PIN) {
+    return { ok: false, error: 'wrong or missing PIN' };
+  }
+
+  if (action === 'open_signups') {
+    setSignupsOpen_(true);
+    return Object.assign({ ok: true }, readPayload_());
+  }
+  if (action === 'close_signups') {
+    setSignupsOpen_(false);
+    return Object.assign({ ok: true }, readPayload_());
+  }
+
+  if (action === 'set_theme') {
+    setTheme_(params.theme || '');
+    return Object.assign({ ok: true }, readPayload_());
+  }
+
+  if (action === 'begin_show') {
+    const waiting = liveNamed_().filter(r => r.status === 'waiting' || r.status === 'next');
+    if (waiting.length) {
+      mcRows_().filter(r => r.status === 'on_stage').forEach(r => writeMcStatus_(r.name, 'done'));
+      writeMcStatus_(waiting[0].name, 'on_stage');
+      mirrorMcToLineup_();
+    }
+    return Object.assign({ ok: true }, readPayload_());
+  }
+
+  if (action === 'cue_next') {
+    const waiting = liveNamed_().filter(r => r.status === 'waiting');
+    if (waiting.length) {
+      writeMcStatus_(waiting[0].name, 'next');
+      mirrorMcToLineup_();
+    }
+    return Object.assign({ ok: true }, readPayload_());
+  }
+
+  if (action === 'sync') {
+    syncAll();
+    return Object.assign({ ok: true }, readPayload_());
+  }
+
+  if (action === 'queue' || action === 'list' || action === 'waiting' || action === 'signup' || action === 'claim') {
+    if (!signupsOpen_()) return Object.assign({ ok: false, error: 'Signups are not open yet.' }, readPayload_());
+    if (!name) return Object.assign({ ok: false, error: 'name required' }, readPayload_());
+    const claimed = occupySlot_(name, note, show, source, chat, atOrder || firstOpenSlot_());
+    if (!claimed.ok) return Object.assign({}, claimed, readPayload_());
+    appendSignup_(name, chat, note, source, show, channel);
+    mirrorMcToLineup_();
+    return Object.assign({ ok: true, order: claimed.order }, readPayload_());
+  } else if (action === 'insert' || action === 'move') {
+    if (!name) return Object.assign({ ok: false, error: 'name required' }, readPayload_());
+    addMcRow_(name, note, show, source || 'mc', chat, atOrder || 1);
+    placeAt_(name, atOrder || 1);
+    compactOrders_();
+    mirrorMcToLineup_();
+  } else if (action === 'now' || action === 'on_stage' || action === 'now_performing') {
+    if (!name) return Object.assign({ ok: false, error: 'name required' }, readPayload_());
+    mcRows_().filter(r => r.status === 'on_stage').forEach(r => writeMcStatus_(r.name, 'done'));
+    addMcRow_(name, note, show, 'mc', chat);
+    writeMcStatus_(name, 'on_stage');
+    mirrorMcToLineup_();
+  } else if (action === 'next') {
+    if (name) writeMcStatus_(name, 'next');
+    mirrorMcToLineup_();
+  } else if (action === 'done' || action === 'clear') {
+    if (name) writeMcStatus_(name, 'done');
+    else mcRows_().filter(r => r.status === 'on_stage').forEach(r => writeMcStatus_(r.name, 'done'));
+    mirrorMcToLineup_();
+  } else if (action === 'cut' || action === 'no_show') {
+    if (name) writeMcStatus_(name, action);
+    mirrorMcToLineup_();
+  } else if (action === 'remove') {
+    if (name) writeMcStatus_(name, 'removed');
+    mirrorMcToLineup_();
+  } else if (action === 'finish_show') {
+    finishShow_();
+  }
+
+  return Object.assign({ ok: true }, readPayload_());
+}
+
+function doGet(e) {
+  const params = (e && e.parameter) || {};
+  const page = params.page || '';
+  const pin = params.pin || '';
+  if (page === 'signup' || page === 'list') return htmlPage_('signup');
+  if (page === 'mc') return htmlPage_('mc', pin);
+
+  const callback = params.callback;
+  let out;
+  if (params.action) {
+    out = handleAction_(params);
+  } else {
+    const fmt = params.format || 'obs';
+    if (fmt === 'full') out = Object.assign({ lineup: liveNamed_() }, readPayload_());
+    else if (fmt === 'slots') out = readPayload_();
+    else out = obsPayload_();
+  }
+
+  if (callback) {
+    const safeCallback = String(callback).replace(/[^A-Za-z0-9_$.]/g, '');
+    return ContentService.createTextOutput(safeCallback + '(' + JSON.stringify(out) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  let body = {};
+  try { body = JSON.parse((e.postData && e.postData.contents) || '{}'); } catch (err) { body = {}; }
+  // Also accept form-encoded posts from a simple HTML form
+  if (e && e.parameter && e.parameter.name && !body.name) {
+    body = e.parameter;
+  }
+  if (!body.action) body.action = 'queue';
+  return json_(handleAction_(body));
+}
+
+function appendSignup_(name, chat, note, source, show, channel) {
+  const { sh, headerRow } = signupsSheet_();
+  const id = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Pacific/Honolulu', "yyyyMMdd-HHmmss") + '-' + name.replace(/\s+/g, '').slice(0, 8);
+  sh.appendRow([new Date(), name, chat || '', note || '', source || 'form', show || DEFAULT_SHOW, channel || '', 'yes', id]);
+}
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function htmlPage_(kind, pin) {
+  const title = kind === 'mc' ? 'SetPulse MC' : 'Get on the list';
+  const show = DEFAULT_SHOW;
+  const url = ScriptApp.getService().getUrl();
+  const html = kind === 'mc' ? mcHtml_(show, pin, url) : signupHtml_(show, url);
+  return HtmlService.createHtmlOutput(html)
+    .setTitle(title)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+}
+
+function signupHtml_(show, url) {
+  return `<!doctype html><html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Get on the list</title>
+<style>
+:root{--bg:#0e0f12;--card:#1a1c22;--ink:#f4f4f5;--mut:#9aa3af;--go:#e8c547;--on:#3dd68c;--taken:#2a2e36}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,sans-serif;padding:16px 16px 36px}
+h1{font-size:1.3rem;margin:0 0 6px}.mut{color:var(--mut);font-size:.92rem;line-height:1.4}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-top:14px}
+label{display:block;font-size:.78rem;color:var(--mut);margin:0 0 6px}
+input{width:100%;min-height:46px;border:0;border-radius:12px;padding:0 12px;font-size:1rem;margin-bottom:12px}
+button#go{width:100%;min-height:48px;border:0;border-radius:12px;font-weight:700;font-size:1.05rem;background:var(--go);color:#111}
+.ok{color:var(--on);font-weight:700;min-height:1.4em}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 14px}
+.slot{min-height:48px;border:0;border-radius:10px;font-weight:700;background:#2a2e36;color:#fff}
+.slot.open{background:#1f3d2a}
+.slot.pick{background:var(--go);color:#111}
+.slot.taken{background:var(--taken);color:#6b7280}
+</style></head><body>
+<h1>Get on the list</h1>
+<p class="mut">${show}. Pick an open number. Don't flag the host.</p>
+<div class="card">
+<label>Stage name</label><input id="name" placeholder="Name as you want it called" autocomplete="name">
+<label>Chat name (optional)</label><input id="chat" placeholder="@handle" autocomplete="username">
+<label>Note (optional)</label><input id="note" placeholder="first time / 5 min" maxlength="80">
+<label>Your spot</label>
+<div class="grid" id="grid"></div>
+<button id="go">Claim this spot</button>
+<p class="ok" id="status"></p>
+</div>
+<script>
+const endpoint=${JSON.stringify(url)};
+const status=document.getElementById('status');
+let pick=0;
+function draw(slots){
+  const open=(slots||[]).filter(s=>s.open);
+  document.getElementById('grid').innerHTML=open.length?open.map(s=>{
+    const cls=Number(s.order)===pick?'slot pick':'slot open';
+    return '<button type="button" class="'+cls+'" data-n="'+s.order+'">'+s.order+'</button>';
+  }).join(''):'<p class="mut" style="grid-column:1/-1">List is full right now.</p>';
+  document.querySelectorAll('.slot.open,.slot.pick').forEach(b=>b.onclick=()=>{pick=Number(b.dataset.n);draw(slots);});
+}
+async function load(){
+  try{
+    const res=await fetch(endpoint+'?format=slots');
+    const j=await res.json();
+    if(!j.signups_open){
+      document.getElementById('grid').innerHTML='<p class="mut" style="grid-column:1/-1">Signups aren\\'t open yet. Check back closer to showtime.</p>';
+      document.getElementById('go').disabled=true;
+      return;
+    }
+    document.getElementById('go').disabled=false;
+    draw(j.slots||[]);
+  }catch(e){status.textContent='Could not load slots.';}
+}
+document.getElementById('go').onclick=async()=>{
+  const name=document.getElementById('name').value.trim();
+  if(!name){status.textContent='Need a name.';return;}
+  if(!pick){status.textContent='Pick an open spot.';return;}
+  status.textContent='Sending...';
+  try{
+    const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'claim',name,order:pick,chat_name:document.getElementById('chat').value.trim(),
+        note:document.getElementById('note').value.trim(),show:${JSON.stringify(show)},source:'list',channel:'list_page'})});
+    const j=await res.json();
+    if(j.ok){
+      status.textContent='You are #'+j.order+'.';
+      document.getElementById('name').value='';
+      document.getElementById('chat').value='';
+      document.getElementById('note').value='';
+      pick=0;
+    }else status.textContent=j.error||'That spot is gone.';
+    if(j.slots)draw(j.slots); else load();
+  }catch(e){status.textContent='Network miss. Try again.';}
+};
+load();
+setInterval(load,8000);
+</script></body></html>`;
+}
+
+function mcHtml_(show, pin, url) {
+  if (String(pin || '') !== MC_PIN) {
+    const wrong = pin ? '<p class="err">Wrong PIN.</p>' : '';
+    return `<!doctype html><html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SetPulse MC</title>
+<style>
+body{margin:0;background:#0e0f12;color:#f4f4f5;font-family:-apple-system,sans-serif;padding:16px}
+h1{font-size:1.2rem}.mut{color:#9aa3af;font-size:.9rem}
+.err{color:#ff6b6b;font-weight:700}
+input{width:100%;min-height:46px;border:0;border-radius:10px;padding:0 12px;font-size:1.2rem;margin:12px 0;text-align:center;letter-spacing:.2em}
+button{width:100%;min-height:46px;border:0;border-radius:10px;font-weight:700;font-size:1.05rem;background:#e8c547;color:#111}
+</style></head><body>
+<h1>MC deck</h1>
+<p class="mut">Enter the PIN from the producer.</p>
+${wrong}
+<input id="pin" type="tel" inputmode="numeric" placeholder="PIN" autofocus>
+<button id="go">Unlock</button>
+<script>
+const endpoint=${JSON.stringify(url)};
+function go(){
+  const p=document.getElementById('pin').value.trim();
+  if(!p)return;
+  window.top.location.href=endpoint+'?page=mc&pin='+encodeURIComponent(p);
+}
+document.getElementById('go').onclick=go;
+document.getElementById('pin').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+</script>
+</body></html>`;
+  }
+  return `<!doctype html><html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SetPulse MC</title>
+<style>
+:root{--ink:#f0eafa;--orange:#ff7a00;--green:#39ff14;--card:rgba(255,255,255,0.06);--mut:#8a7ba0}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,sans-serif;padding:16px 16px 40px;color:var(--ink);
+  background:radial-gradient(circle at center,#3a1f5d 0%,#1a0f2e 45%,#000000 100%);background-attachment:fixed;min-height:100vh}
+h1{font-size:1.2rem;margin:0 0 4px;color:var(--orange)}
+.mut{color:var(--mut);font-size:.86rem}
+.err{color:#ff6b6b;font-weight:700;min-height:1.2em;margin:6px 0}
+.now{background:rgba(57,255,20,0.1);border:1px solid rgba(57,255,20,0.35);border-radius:14px;padding:10px 14px;margin:10px 0}
+.now .label{font-size:.68rem;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.now .name{font-size:1.2rem;font-weight:800;color:var(--green)}
+.card{background:var(--card);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px;margin:8px 0}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow button{flex:1;min-height:42px;border:0;border-radius:10px;font-weight:700}
+.go{background:var(--orange);color:#111}.ghost{background:rgba(255,255,255,0.08);color:#fff}
+.on{background:var(--green);color:#111}
+.danger{background:rgba(255,107,107,0.15);color:#ff6b6b}
+input{width:100%;min-height:44px;border:0;border-radius:10px;padding:0 12px;margin:6px 0;font-size:1rem}
+.who{font-weight:700;font-size:1.02rem}
+.badge{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,0.1);color:var(--mut);margin-left:6px}
+.badge.on_stage{background:rgba(57,255,20,0.18);color:var(--green)}
+.meta{color:var(--mut);font-size:.8rem;margin-top:2px}
+h2{font-size:.95rem;color:var(--orange);margin:20px 0 8px}
+</style></head><body>
+<h1>MC deck - ${show}</h1>
+<div class="now">
+  <div class="label">On stage</div>
+  <div class="name" id="nowName">-</div>
+  <div class="mut" id="nextName"></div>
+</div>
+<p class="err" id="err"></p>
+
+<div class="card">
+  <label class="mut" style="display:block;margin-bottom:6px">Theme of the night</label>
+  <input id="theme" placeholder="e.g. Heckle Mic">
+  <button class="go" id="setTheme" style="width:100%">Set theme</button>
+</div>
+<div class="card">
+  <button class="ghost" id="toggleSignups" style="width:100%">Signups: ...</button>
+</div>
+<div class="card">
+  <div class="btnrow">
+    <button class="go" id="beginShow">Begin Simulation</button>
+    <button class="ghost" id="cueNext">Cue Next Comic</button>
+  </div>
+</div>
+<div class="card">
+  <input id="walk" placeholder="Walk-up name">
+  <input id="spot" type="number" min="1" placeholder="Insert at # (blank = end)">
+  <button class="go" id="add" style="width:100%">Add / insert</button>
+</div>
+<div class="card">
+  <button class="danger" id="finishShow" style="width:100%">New Show</button>
+</div>
+
+<h2>Lineup</h2>
+<div id="list"></div>
+
+<script>
+const PIN=${JSON.stringify(pin)};
+const SHOW=${JSON.stringify(show)};
+let signupsOpen=false;
+let busy=false;
+let themeLoaded=false;
+const errEl=document.getElementById('err');
+
+function esc(s){return String(s).replace(/\\\\/g,'\\\\\\\\').replace(/'/g,"\\\\'");}
+
+function runServer(fn,arg){
+  return new Promise(function(resolve,reject){
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](arg);
+  });
+}
+
+function load(){
+  runServer('mcData',PIN).then(function(j){
+    if(!j||!j.ok){ errEl.textContent=(j&&j.error)||'Could not load the deck.'; return; }
+    errEl.textContent='';
+    const obs=j.obs||{};
+    signupsOpen=!!j.signups_open;
+    const tb=document.getElementById('toggleSignups');
+    tb.textContent=signupsOpen?'Signups: OPEN (tap to close)':'Signups: CLOSED (tap to open)';
+    tb.className=signupsOpen?'on':'ghost';
+    document.getElementById('nowName').textContent=obs.now||'-';
+    document.getElementById('nextName').textContent=obs.next?('Next: '+obs.next):'';
+    const themeInput=document.getElementById('theme');
+    if(!themeLoaded && document.activeElement!==themeInput){
+      themeInput.value=j.theme||'';
+      themeLoaded=true;
+    }
+    const rows=(j.lineup||[]).filter(function(r){return r.name;});
+    document.getElementById('list').innerHTML=rows.length?rows.map(function(r){
+      const badgeClass=r.status==='on_stage'?'badge on_stage':'badge';
+      const meta=[r.chat_name?('@'+r.chat_name):'',r.note||''].filter(Boolean).join(' - ');
+      return '<div class="card"><div class="who">'+(r.order||'')+'. '+r.name+
+        '<span class="'+badgeClass+'">'+(r.status||'waiting')+'</span></div>'+
+        (meta?'<div class="meta">'+meta+'</div>':'')+
+        '<div class="btnrow" style="margin-top:8px">'+
+          '<button class="ghost" onclick="act(\\'next\\',\\''+esc(r.name)+'\\')">Next</button>'+
+          '<button class="go" onclick="act(\\'on_stage\\',\\''+esc(r.name)+'\\')">On stage</button>'+
+          '<button class="ghost" onclick="act(\\'done\\',\\''+esc(r.name)+'\\')">Done</button>'+
+          '<button class="danger" onclick="removeComic(\\''+esc(r.name)+'\\')">Remove</button>'+
+        '</div></div>';
+    }).join(''):'<p class="mut">List is empty.</p>';
+  }).catch(function(err){
+    errEl.textContent='RPC failed: '+(err&&err.message?err.message:JSON.stringify(err));
+  });
+}
+
+function doAction(params){
+  if(busy)return;
+  busy=true;
+  errEl.textContent='Working...';
+  runServer('mcAction',Object.assign({pin:PIN},params)).then(function(result){
+    busy=false;
+    if(result&&result.ok===false){
+      errEl.textContent='Server said: '+(result.error||'action did not succeed');
+    } else {
+      errEl.textContent='';
+    }
+    load();
+  }).catch(function(err){
+    busy=false;
+    errEl.textContent='RPC failed: '+(err&&err.message?err.message:JSON.stringify(err));
+  });
+}
+
+function act(action,name){ doAction({action:action,name:name}); }
+
+function removeComic(name){
+  if(!confirm('Remove '+name+' from the list?'))return;
+  doAction({action:'remove',name:name});
+}
+
+document.getElementById('add').onclick=function(){
+  const name=document.getElementById('walk').value.trim();
+  if(!name)return;
+  const order=parseInt(document.getElementById('spot').value,10);
+  const action=order>0?'insert':'queue';
+  doAction({action:action,name:name,order:order||undefined,source:'walkup',show:SHOW});
+  document.getElementById('walk').value='';
+  document.getElementById('spot').value='';
+};
+document.getElementById('toggleSignups').onclick=function(){
+  doAction({action:signupsOpen?'close_signups':'open_signups'});
+};
+document.getElementById('beginShow').onclick=function(){
+  doAction({action:'begin_show'});
+};
+document.getElementById('cueNext').onclick=function(){
+  doAction({action:'cue_next'});
+};
+document.getElementById('setTheme').onclick=function(){
+  doAction({action:'set_theme',theme:document.getElementById('theme').value.trim()});
+};
+document.getElementById('finishShow').onclick=function(){
+  if(!confirm('Start a new show? This clears the list (it is archived first, nothing is lost).'))return;
+  doAction({action:'finish_show'});
+};
+load();
+setInterval(load,8000);
+</script></body></html>`;
+}
