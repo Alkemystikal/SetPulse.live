@@ -6,15 +6,18 @@
 <title>SetPulse - copy Apps Script source</title>
 <style>
   body { font-family: -apple-system, sans-serif; background:#0e0f12; color:#f4f4f5; padding:16px; }
-  button { min-height:48px; padding:0 20px; border:0; border-radius:10px; font-weight:700; font-size:1.05rem; background:#e8c547; color:#111; }
-  pre { white-space:pre-wrap; word-break:break-word; background:#1a1c22; padding:12px; border-radius:10px; font-size:.78rem; max-height:60vh; overflow:auto; }
+  button { min-height:48px; padding:0 20px; border:0; border-radius:10px; font-weight:700; font-size:1.05rem; background:#e8c547; color:#111; margin-right:8px; }
+  pre { white-space:pre-wrap; word-break:break-word; background:#1a1c22; padding:12px; border-radius:10px; font-size:.78rem; max-height:60vh; overflow:auto; -webkit-user-select:text; user-select:text; }
   .msg { color:#3dd68c; font-weight:700; min-height:1.4em; }
+  .hint { color:#9aa3af; font-size:.85rem; margin-top:4px; }
 </style>
 </head>
 <body>
 <h1>SetPulse Apps Script source</h1>
 <button id="copyBtn">Copy script</button>
+<button id="selectBtn">Select all</button>
 <p class="msg" id="msg"></p>
+<p class="hint" id="hint"></p>
 <pre id="src">/**
  * SetPulse - Producer signup + MC deck + OBS
  *
@@ -896,16 +899,53 @@ setInterval(load,8000);
 }
 </pre>
 <script>
-const src = document.getElementById("src").textContent;
+const srcEl = document.getElementById("src");
+const src = srcEl.textContent;
 const btn = document.getElementById("copyBtn");
+const selectBtn = document.getElementById("selectBtn");
 const msg = document.getElementById("msg");
-btn.onclick = async () => {
+const hint = document.getElementById("hint");
+
+function selectAllSrc() {
+  const range = document.createRange();
+  range.selectNodeContents(srcEl);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function legacyCopy() {
+  selectAllSrc();
   try {
-    await navigator.clipboard.writeText(src);
-    msg.textContent = "Copied. Paste into Code.gs.";
-  } catch (e) {
-    msg.textContent = "Copy failed: " + e.message;
+    const ok = document.execCommand("copy");
+    if (ok) {
+      msg.textContent = "Copied. Paste into Code.gs.";
+      hint.textContent = "";
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+selectBtn.onclick = () => {
+  selectAllSrc();
+  hint.textContent = "Text selected below - use your browser/OS copy command (or long-press -> Copy on mobile).";
+};
+
+btn.onclick = async () => {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(src);
+      msg.textContent = "Copied. Paste into Code.gs.";
+      hint.textContent = "";
+      return;
+    } catch (e) {
+      // fall through to the legacy method below
+    }
   }
+  if (legacyCopy()) return;
+  msg.textContent = "Could not auto-copy in this browser.";
+  hint.textContent = "Tap \"Select all\" below, then use your browser's own Copy (or long-press -> Copy on mobile). If this is an in-app browser (Mail, Messages, etc.), try opening this page in Safari/Chrome directly instead.";
 };
 </script>
 </body>
