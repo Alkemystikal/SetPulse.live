@@ -783,7 +783,7 @@ h2{font-size:.95rem;color:var(--orange);margin:20px 0 8px}
   &lt;button class="go" id="add" style="width:100%"&gt;Add / insert&lt;/button&gt;
 &lt;/div&gt;
 &lt;div class="card"&gt;
-  &lt;button class="danger" id="finishShow" style="width:100%"&gt;Finish Show&lt;/button&gt;
+  &lt;button class="danger" id="finishShow" style="width:100%"&gt;New Show&lt;/button&gt;
 &lt;/div&gt;
 
 &lt;h2&gt;Lineup&lt;/h2&gt;
@@ -887,7 +887,7 @@ document.getElementById('setTheme').onclick=function(){
   doAction({action:'set_theme',theme:document.getElementById('theme').value.trim()});
 };
 document.getElementById('finishShow').onclick=function(){
-  if(!confirm('Finish the show? This clears the list (it is archived first, nothing is lost).'))return;
+  if(!confirm('Start a new show? This clears the list (it is archived first, nothing is lost).'))return;
   doAction({action:'finish_show'});
 };
 load();
