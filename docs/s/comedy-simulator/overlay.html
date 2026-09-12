@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OBS — Now Performing</title>
+<style>
+  html, body { margin:0; background:transparent; font-family:-apple-system,BlinkMacSystemFont,sans-serif; color:#fff; }
+  .wrap { padding:24px 28px; text-shadow:0 2px 12px #000; }
+  .k { font-size:18px; letter-spacing:.12em; text-transform:uppercase; opacity:.75; }
+  .now { font-size:64px; font-weight:800; line-height:1.05; margin:4px 0 18px; }
+  .next { font-size:28px; opacity:.9; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="k">Now</div>
+    <div class="now" id="now">—</div>
+    <div class="k">Up next</div>
+    <div class="next" id="next">—</div>
+  </div>
+<script>
+const params = new URLSearchParams(location.search);
+const feed = params.get("feed") || "";
+
+async function tick() {
+  if (!feed) return;
+  try {
+    const r = await fetch(feed + (feed.includes("?") ? "&" : "?") + "format=obs&_=" + Date.now());
+    const d = await r.json();
+    document.getElementById("now").textContent = d.now || "—";
+    document.getElementById("next").textContent = d.next || "—";
+  } catch (e) {}
+}
+tick();
+setInterval(tick, 2000);
+</script>
+</body>
+</html>
