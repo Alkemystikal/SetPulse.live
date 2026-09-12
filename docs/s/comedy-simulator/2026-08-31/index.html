@@ -2,183 +2,344 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Comedy Simulator — 2026-08-31</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SetPulse — Night Recap</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
-  html, body { height: 100%; margin: 0; }
+  :root { --ink:#f0eafa; --orange:#ff7a00; --green:#39ff14; --card:rgba(255,255,255,0.06); --mut:#8a7ba0; --pos:#39ff14; --neg:#ff6b6b; --neu:#8a7ba0; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; }
   body {
-    font-family: -apple-system, sans-serif;
-    color: #f0eafa;
     background: radial-gradient(circle at center, #3a1f5d 0%, #1a0f2e 45%, #000000 100%);
     background-attachment: fixed;
     min-height: 100vh;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 16px 16px 60px;
   }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 40px 16px 80px; }
-  .header { text-align: center; margin-bottom: 8px; }
-  .logo { width: 90px; height: 90px; border-radius: 50%; display: block; margin: 0 auto 12px; }
-  h1 { font-size: 1.4rem; color: #ff7a00; margin-bottom: 4px; text-align: center; }
-  h2 { font-size: 1.05rem; color: #ff7a00; margin: 32px 0 12px; }
-  p.lead { color: #39ff14; margin-top: 0; }
-  code { background: rgba(255, 255, 255, 0.08); color: #e0d4f5; padding: 2px 6px; border-radius: 4px; }
-  ul.files { line-height: 1.9; padding-left: 1.2rem; }
-  a { color: #c9a6ff; }
-
-  .performers { display: flex; flex-direction: column; gap: 10px; }
-  .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 14px; }
-  .card .name { font-weight: 700; font-size: 1.02rem; }
-  .card .name a.comiclink { color: #f0eafa; text-decoration: none; border-bottom: 1px dashed #8a7ba0; }
-  .card .name a.comiclink:hover { color: #ff7a00; border-bottom-color: #ff7a00; }
-  .card .meta { color: #b8a9cc; font-size: .82rem; margin-top: 2px; }
-  .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 8px; background: rgba(255,255,255,0.08); }
-  .bar .pos { background: #39ff14; }
-  .bar .neg { background: #ff4d4d; }
-  .bar .neu { background: #7a6f8a; }
-  .counts { color: #b8a9cc; font-size: .78rem; margin-top: 4px; }
-
-  #searchBox { width: 100%; min-height: 46px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);
-    background: rgba(255,255,255,0.06); color: #f0eafa; padding: 0 14px; font-size: 1rem; box-sizing: border-box; }
-  #searchBox::placeholder { color: #8a7ba0; }
-  #searchStatus { color: #8a7ba0; font-size: .82rem; margin-top: 8px; }
-  .result { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
-  .result .who { font-weight: 700; }
-  .result .t { color: #8a7ba0; font-size: .78rem; margin-left: 6px; }
-  .result .sent { display:inline-block; font-size:.72rem; padding:1px 6px; border-radius:8px; margin-left:6px; }
-  .sent.positive { background: rgba(57,255,20,0.18); color:#39ff14; }
-  .sent.negative { background: rgba(255,77,77,0.18); color:#ff8080; }
-  .sent.neutral, .sent.format { background: rgba(255,255,255,0.1); color:#b8a9cc; }
-  .result .cap { color: #b8a9cc; font-style: italic; font-size: .84rem; margin-top: 4px; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; color: var(--orange); }
+  .sub { color: var(--mut); font-size: .88rem; margin: 0 0 18px; }
+  .playerWrap { position: relative; width: 100%; padding-top: 56.25%; border-radius: 14px; overflow: hidden; background: #000; margin-bottom: 16px; }
+  .playerWrap iframe { position: absolute; top:0; left:0; width:100%; height:100%; border:0; }
+  h2 { font-size: 1rem; color: var(--orange); margin: 22px 0 10px; }
+  .comics { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .comicBtn {
+    background: var(--card); border: 1px solid rgba(255,255,255,0.1); color: var(--ink);
+    border-radius: 10px; padding: 8px 14px; font-weight: 700; font-size: .92rem; cursor: pointer;
+  }
+  .comicBtn.active { background: var(--orange); color: #111; border-color: var(--orange); }
+  .comicBtn .n { display:block; font-weight:400; font-size:.72rem; color:var(--mut); }
+  .comicBtn.active .n { color: #442200; }
+  .summaryCard { background: var(--card); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px 16px; margin: 10px 0 18px; display:none; }
+  .summaryCard.show { display:block; }
+  .sentRow { display:flex; gap:14px; margin-top:6px; font-size:.85rem; }
+  .sentRow span.dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+  .feed { display:none; }
+  .feed.show { display:block; }
+  .row { display:flex; gap:10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); align-items:flex-start; }
+  .row .t { color: var(--mut); font-size: .74rem; width: 52px; flex-shrink:0; padding-top:2px; font-variant-numeric: tabular-nums; }
+  .row .content { flex: 1; }
+  .cue { cursor: pointer; color: var(--ink); }
+  .cue:hover { color: var(--orange); text-decoration: underline; }
+  .chatMsg { font-size: .86rem; }
+  .chatMsg .author { font-weight: 700; color: #c9a6ff; }
+  .chatMsg.sent-pos { border-left: 2px solid var(--pos); padding-left: 8px; }
+  .chatMsg.sent-neg { border-left: 2px solid var(--neg); padding-left: 8px; }
+  .chatMsg.sent-neu { border-left: 2px solid var(--neu); padding-left: 8px; }
+  .empty { color: var(--mut); font-size: .9rem; }
+  .err { color: #ff6b6b; font-weight: 700; margin: 10px 0; }
+  a.back { color: #c9a6ff; font-size: .85rem; }
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="header">
-      <img class="logo" src="../../../assets/comedy-simulator-logo.png" alt="The Comedy Simulator">
-      <h1>Comedy Simulator — 2026-08-31</h1>
-      <p class="lead">This page is a human view of the archived night. Machines should read the files directly.</p>
-    </div>
+<div class="wrap">
+  <a class="back" href="../">&larr; All nights</a>
+  <h1 id="title">Loading night…</h1>
+  <p class="sub" id="dateLine"></p>
 
-    <h2>Performers</h2>
-    <div class="performers" id="performers">Loading…</div>
+  <div class="playerWrap"><div id="player"></div></div>
+  <p class="err" id="err"></p>
 
-    <h2>Search comics &amp; chat</h2>
-    <input id="searchBox" type="text" placeholder="Search a comic's name or a phrase from chat…" autocomplete="off">
-    <div id="searchStatus"></div>
-    <div id="results"></div>
+  <h2>Lineup</h2>
+  <div class="comics" id="comics"><p class="empty">Loading lineup…</p></div>
 
-    <h2>Raw files</h2>
-    <ul class="files">
-      <li><a href="night.json">night.json</a> — source of truth (video id, stream start, file index)</li>
-      <li><a href="chat.csv">chat.csv</a> — chat rows with sentiment and caption context</li>
-      <li><a href="captions.vtt">captions.vtt</a> — closed captions on video time</li>
-      <li><a href="stats.json">stats.json</a> — per-performer and room counts</li>
-    </ul>
+  <div class="summaryCard" id="summaryCard">
+    <strong id="summaryName"></strong>
+    <div class="sentRow" id="summarySent"></div>
   </div>
 
+  <h2 id="feedTitle" style="display:none">Dialogue &amp; chat</h2>
+  <div class="feed" id="feed"></div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
 <script>
+let player = null;
+let playerReady = false;
+let night = null, stats = null, captionSentences = [], chatRows = [];
+
 function fmtT(s) {
-  s = Math.round(s);
-  const neg = s < 0;
-  s = Math.abs(s);
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-  const mm = h ? String(m).padStart(2, '0') : String(m);
-  return (neg ? '-' : '') + (h ? h + ':' : '') + mm + ':' + String(sec).padStart(2, '0');
+  s = Math.max(0, Math.round(s));
+  const m = Math.floor(s / 60), sec = s % 60;
+  return m + ':' + String(sec).padStart(2, '0');
 }
 
-function parseCSV(text) {
+function parseVttTime(t) {
+  const parts = t.trim().split(':').map(Number);
+  if (parts.length === 3) return parts[0]*3600 + parts[1]*60 + parts[2];
+  if (parts.length === 2) return parts[0]*60 + parts[1];
+  return 0;
+}
+
+function parseVtt(text) {
+  const cues = [];
+  const blocks = text.replace(/\r/g, '').split(/\n\n+/);
+  for (const block of blocks) {
+    const lines = block.split('\n').filter(Boolean);
+    const timeLine = lines.find(l => l.includes('-->'));
+    if (!timeLine) continue;
+    const [startStr, endStr] = timeLine.split('-->').map(s => s.trim().split(' ')[0]);
+    const start = parseVttTime(startStr), end = parseVttTime(endStr);
+    const textLines = lines.slice(lines.indexOf(timeLine) + 1);
+    const cueText = textLines.join(' ').replace(/<[^>]+>/g, '').trim();
+    if (!cueText) continue;
+    cues.push({ start, end, text: cueText });
+  }
+  return cues;
+}
+
+function normWord(w) {
+  return w.toLowerCase().replace(/[^a-z0-9']/g, '');
+}
+
+function mergeRollingCaptions(cues) {
+  let emittedWords = [];
+  const chunks = [];
+  let lastT = 0;
+  for (const cue of cues) {
+    const cueWords = cue.text.split(/\s+/).filter(Boolean);
+    if (!cueWords.length) continue;
+    const cueNorm = cueWords.map(normWord);
+    const maxK = Math.min(emittedWords.length, cueWords.length);
+    let k = 0;
+    for (let candidate = maxK; candidate >= 1; candidate--) {
+      const tail = emittedWords.slice(-candidate).map(w => w.norm);
+      const head = cueNorm.slice(0, candidate);
+      if (tail.join('|') === head.join('|')) { k = candidate; break; }
+    }
+    const newWords = cueWords.slice(k);
+    if (newWords.length) {
+      const span = Math.max(0.01, cue.end - cue.start);
+      const per = span / newWords.length;
+      newWords.forEach((w, i) => {
+        let t = cue.start + per * i;
+        t = Math.max(t, lastT + 0.01);
+        lastT = t;
+        chunks.push({ word: w, t });
+        emittedWords.push({ word: w, norm: normWord(w) });
+      });
+    }
+  }
+  return chunks;
+}
+
+function groupIntoSentences(wordChunks) {
+  const sentences = [];
+  let current = [];
+  for (const wc of wordChunks) {
+    current.push(wc);
+    const isSpeakerChange = wc.word.startsWith('>>');
+    const endsSentence = /[.!?]$/.test(wc.word.replace(/\[.*?\]/g, ''));
+    if ((endsSentence || isSpeakerChange) && current.length > 0) {
+      if (isSpeakerChange && current.length === 1) continue;
+      if (isSpeakerChange) {
+        const marker = current.pop();
+        sentences.push(current);
+        current = [marker];
+      } else {
+        sentences.push(current);
+        current = [];
+      }
+    }
+  }
+  if (current.length) sentences.push(current);
+  return sentences.map(words => ({
+    start: words[0].t,
+    end: words[words.length - 1].t,
+    text: words.map(w => w.word).join(' '),
+    words
+  }));
+}
+
+function parseCsv(text) {
   const rows = [];
-  let row = [], field = '', i = 0, inQuotes = false;
-  while (i < text.length) {
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (inQuotes) {
       if (c === '"') {
-        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
-        inQuotes = false; i++; continue;
-      }
-      field += c; i++; continue;
+        if (text[i+1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else field += c;
     }
-    if (c === '"') { inQuotes = true; i++; continue; }
-    if (c === ',') { row.push(field); field = ''; i++; continue; }
-    if (c === '\n' || c === '\r') {
-      if (c === '\r' && text[i + 1] === '\n') i++;
-      row.push(field); field = '';
-      if (row.length > 1 || row[0] !== '') rows.push(row);
-      row = []; i++; continue;
-    }
-    field += c; i++;
   }
-  if (field !== '' || row.length) { row.push(field); rows.push(row); }
-  const headers = rows.shift() || [];
-  return rows.map(r => Object.fromEntries(headers.map((h, idx) => [h, r[idx] || ''])));
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  if (!rows.length) return [];
+  const headers = rows[0];
+  return rows.slice(1).filter(r => r.length === headers.length).map(r => {
+    const obj = {};
+    headers.forEach((h, idx) => obj[h.trim()] = r[idx]);
+    return obj;
+  });
 }
 
-let CHAT_ROWS = null;
-async function loadChat() {
-  if (CHAT_ROWS) return CHAT_ROWS;
-  const res = await fetch('chat.csv');
-  const text = await res.text();
-  CHAT_ROWS = parseCSV(text);
-  return CHAT_ROWS;
+function onYouTubeIframeAPIReady() {
+  window.__ytApiReady = true;
+  maybeInitPlayer();
 }
 
-fetch('stats.json').then(r => r.json()).then(stats => {
-  const el = document.getElementById('performers');
-  const perf = stats.performers || [];
-  if (!perf.length) { el.textContent = 'No performer data.'; return; }
-  el.innerHTML = perf.map(p => {
-    const c = p.chat || {};
-    const total = (c.pos||0) + (c.neg||0) + (c.neu||0) + (c.format||0);
-    const pct = n => total ? (100 * n / total).toFixed(1) : 0;
-    const dur = fmtT(p.started_video_t) + ' – ' + fmtT(p.ended_video_t);
-    return `<div class="card">
-      <div class="name"><a href="#" class="comiclink" onclick="jumpToComic(${JSON.stringify(p.name)});return false;">${p.name}</a></div>
-      <div class="meta">On stage ${dur} · ${p.mentions_gated || 0} mention(s)</div>
-      <div class="bar">
-        <div class="pos" style="width:${pct(c.pos)}%"></div>
-        <div class="neg" style="width:${pct(c.neg)}%"></div>
-        <div class="neu" style="width:${pct((c.neu||0)+(c.format||0))}%"></div>
-      </div>
-      <div class="counts">${c.pos||0} positive · ${c.neg||0} negative · ${(c.neu||0)+(c.format||0)} neutral</div>
-    </div>`;
+function maybeInitPlayer() {
+  if (!window.__ytApiReady || !night || player) return;
+  player = new YT.Player('player', {
+    videoId: night.video_id,
+    playerVars: { rel: 0 },
+    events: { onReady: () => { playerReady = true; } }
+  });
+}
+
+function seekTo(seconds) {
+  if (!playerReady) { alert('Player still loading — try again in a moment.'); return; }
+  player.seekTo(seconds, true);
+  player.playVideo();
+}
+
+function sentimentCounts(perfName) {
+  const rows = chatRows.filter(r => (r.current_performer || '').trim() === perfName);
+  const counts = { pos: 0, neg: 0, neu: 0 };
+  rows.forEach(r => {
+    const s = (r.sentiment || '').toLowerCase();
+    if (s.startsWith('pos')) counts.pos++;
+    else if (s.startsWith('neg')) counts.neg++;
+    else counts.neu++;
+  });
+  return counts;
+}
+
+function renderComics() {
+  const el = document.getElementById('comics');
+  if (!stats || !stats.performers || !stats.performers.length) {
+    el.innerHTML = '<p class="empty">No performer data for this night yet.</p>';
+    return;
+  }
+  const ordered = stats.performers.slice().sort((a, b) => a.started_video_t - b.started_video_t);
+  el.innerHTML = ordered.map(p => {
+    const dur = Math.max(0, Math.round((p.ended_video_t - p.started_video_t) / 60));
+    return `<button type="button" class="comicBtn" data-name="${p.name.replace(/"/g, '&quot;')}">${p.name}<span class="n">${dur}m set</span></button>`;
   }).join('');
-}).catch(() => { document.getElementById('performers').textContent = 'Could not load stats.json.'; });
-
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-let searchTimer = null;
-document.getElementById('searchBox').addEventListener('input', (e) => {
-  clearTimeout(searchTimer);
-  const q = e.target.value.trim();
-  searchTimer = setTimeout(() => runSearch(q), 200);
-});
-
-function jumpToComic(name) {
-  const box = document.getElementById('searchBox');
-  box.value = name;
-  runSearch(name);
-  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el.querySelectorAll('.comicBtn').forEach(btn => {
+    btn.onclick = () => selectComic(btn.dataset.name);
+  });
 }
 
-async function runSearch(q) {
-  const status = document.getElementById('searchStatus');
-  const results = document.getElementById('results');
-  if (!q) { status.textContent = ''; results.innerHTML = ''; return; }
-  status.textContent = 'Searching…';
-  const rows = await loadChat();
-  const needle = q.toLowerCase();
-  const hits = rows.filter(r =>
-    (r.current_performer || '').toLowerCase().includes(needle) ||
-    (r.author || '').toLowerCase().includes(needle) ||
-    (r.text || '').toLowerCase().includes(needle)
-  ).slice(0, 200);
-  status.textContent = hits.length + ' match(es)' + (hits.length === 200 ? ' (showing first 200)' : '');
-  results.innerHTML = hits.map(r => `
-    <div class="result">
-      <span class="who">${esc(r.author)}</span><span class="t">${fmtT(parseFloat(r.video_t)||0)}${r.current_performer ? ' · on stage: ' + esc(r.current_performer) : ''}</span>
-      <span class="sent ${esc(r.sentiment||'neutral')}">${esc(r.sentiment||'neutral')}</span>
-      <div>${esc(r.text)}</div>
-      ${r.caption_window ? `<div class="cap">🎤 ${esc(r.caption_window)}</div>` : ''}
-    </div>`).join('');
+function findIntroLowerBound(perf, prevEnd, sentences) {
+  const INTRO_BUFFER = 10;
+  const SEARCH_WINDOW = 30;
+  const nameLower = perf.name.toLowerCase();
+  const searchFrom = Math.max(prevEnd, perf.started_video_t - SEARCH_WINDOW);
+  const candidates = sentences.filter(s =>
+    s.start >= searchFrom && s.start <= perf.started_video_t + 5 &&
+    /give it up for/i.test(s.text) && s.text.toLowerCase().includes(nameLower)
+  );
+  if (candidates.length) {
+    return candidates.sort((a, b) => a.start - b.start)[0].start;
+  }
+  return Math.max(prevEnd, perf.started_video_t - INTRO_BUFFER);
 }
+
+function selectComic(name) {
+  document.querySelectorAll('.comicBtn').forEach(b => b.classList.toggle('active', b.dataset.name === name));
+  const ordered = stats.performers.slice().sort((a, b) => a.started_video_t - b.started_video_t);
+  const idx = ordered.findIndex(p => p.name === name);
+  const perf = ordered[idx];
+  if (!perf) return;
+
+  seekTo(perf.started_video_t);
+
+  const sc = document.getElementById('summaryCard');
+  document.getElementById('summaryName').textContent = name;
+  const counts = sentimentCounts(name);
+  document.getElementById('summarySent').innerHTML =
+    `<span><span class="dot" style="background:var(--pos)"></span>${counts.pos} positive</span>` +
+    `<span><span class="dot" style="background:var(--neg)"></span>${counts.neg} negative</span>` +
+    `<span><span class="dot" style="background:var(--neu)"></span>${counts.neu} neutral</span>`;
+  sc.classList.add('show');
+
+  const prevEnd = idx > 0 ? ordered[idx - 1].ended_video_t : 0;
+  const lowerBound = findIntroLowerBound(perf, prevEnd, captionSentences);
+  const cues = captionSentences.filter(s => s.start >= lowerBound && s.start < perf.ended_video_t)
+    .map(s => ({ kind: 'caption', t: s.start, ...s }));
+  const chats = chatRows.filter(r => (r.current_performer || '').trim() === name)
+    .map(r => ({ kind: 'chat', t: parseFloat(r.video_t) || 0, ...r }));
+
+  const combined = cues.concat(chats).sort((a, b) => a.t - b.t);
+
+  const feedEl = document.getElementById('feed');
+  document.getElementById('feedTitle').style.display = 'block';
+  if (!combined.length) {
+    feedEl.innerHTML = '<p class="empty">No captions or chat captured for this set.</p>';
+  } else {
+    feedEl.innerHTML = combined.map(item => {
+      if (item.kind === 'caption') {
+        const wordSpans = item.words.map(w =>
+          `<span class="cue" data-t="${w.t}">${w.word}</span>`
+        ).join(' ');
+        return `<div class="row"><div class="t">${fmtT(item.t)}</div><div class="content">${wordSpans}</div></div>`;
+      }
+      const sRaw = (item.sentiment || '').toLowerCase();
+      const sCls = sRaw.startsWith('pos') ? 'sent-pos' : sRaw.startsWith('neg') ? 'sent-neg' : 'sent-neu';
+      const who = item.chat_name || item.author || 'viewer';
+      return `<div class="row"><div class="t">${fmtT(item.t)}</div><div class="content chatMsg ${sCls}"><span class="author">${who}:</span> ${item.text || ''}</div></div>`;
+    }).join('');
+  }
+  feedEl.classList.add('show');
+  feedEl.querySelectorAll('.cue').forEach(el => {
+    el.onclick = () => seekTo(parseFloat(el.dataset.t));
+  });
+}
+
+async function load() {
+  try {
+    const [nightRes, statsRes, vttRes, chatRes] = await Promise.all([
+      fetch('night.json'),
+      fetch('stats.json'),
+      fetch('captions.vtt'),
+      fetch('chat.csv')
+    ]);
+    if (!nightRes.ok) throw new Error('night.json missing');
+    night = await nightRes.json();
+    document.getElementById('title').textContent = night.title || 'Comedy Simulator';
+    document.getElementById('dateLine').textContent = night.date || '';
+    maybeInitPlayer();
+
+    stats = statsRes.ok ? await statsRes.json() : { performers: [] };
+    const rawCues = vttRes.ok ? parseVtt(await vttRes.text()) : [];
+    const wordChunks = mergeRollingCaptions(rawCues);
+    captionSentences = groupIntoSentences(wordChunks);
+    chatRows = chatRes.ok ? parseCsv(await chatRes.text()) : [];
+
+    renderComics();
+  } catch (e) {
+    document.getElementById('err').textContent = 'Could not load this night: ' + e.message;
+  }
+}
+
+load();
 </script>
 </body>
 </html>
