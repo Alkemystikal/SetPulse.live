@@ -45,6 +45,9 @@
     <label>Chat name (optional)</label>
     <input id="chat" placeholder="@handle on YouTube chat" autocomplete="username">
 
+    <label>Social media (optional, shown on stream)</label>
+    <input id="social" placeholder="@handle on Instagram/TikTok/etc" autocomplete="off">
+
     <label>Note (optional)</label>
     <input id="note" placeholder="first time / 5 min" maxlength="80">
 
@@ -160,6 +163,7 @@ document.getElementById("go").onclick = async () => {
       name,
       order: pick,
       chat_name: document.getElementById("chat").value.trim(),
+      social: document.getElementById("social").value.trim(),
       note: document.getElementById("note").value.trim(),
       show: DEFAULT_SHOW,
       source: "list",
@@ -169,6 +173,7 @@ document.getElementById("go").onclick = async () => {
       status.textContent = "You're #" + j.order + ".";
       document.getElementById("name").value = "";
       document.getElementById("chat").value = "";
+      document.getElementById("social").value = "";
       document.getElementById("note").value = "";
       pick = 0;
       document.getElementById("orderlink").style.display = "block";
