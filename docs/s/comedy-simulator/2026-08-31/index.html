@@ -248,16 +248,27 @@ function renderComics() {
 }
 
 function findIntroLowerBound(perf, prevEnd, sentences) {
+  // Tried in priority order: the strongest, most specific "arrival" phrases
+  // first, falling back to weaker signals, and only "on deck" (which
+  // announces the NEXT comic while the current one is still on stage, so
+  // it's a late-resort signal, not a reliable start-of-segment anchor).
+  const PATTERNS = [
+    /give (it )?up for/i,
+    /coming (up )?to the stage/i,
+    /here (he|she|they)('s| is| are)?\b/i,
+    /on deck/i
+  ];
   const INTRO_BUFFER = 10;
-  const SEARCH_WINDOW = 30;
+  const SEARCH_WINDOW = 60;
   const nameLower = perf.name.toLowerCase();
   const searchFrom = Math.max(prevEnd, perf.started_video_t - SEARCH_WINDOW);
-  const candidates = sentences.filter(s =>
+  const inWindow = sentences.filter(s =>
     s.start >= searchFrom && s.start <= perf.started_video_t + 5 &&
-    /give it up for/i.test(s.text) && s.text.toLowerCase().includes(nameLower)
+    s.text.toLowerCase().includes(nameLower)
   );
-  if (candidates.length) {
-    return candidates.sort((a, b) => a.start - b.start)[0].start;
+  for (const pattern of PATTERNS) {
+    const matches = inWindow.filter(s => pattern.test(s.text));
+    if (matches.length) return matches.sort((a, b) => a.start - b.start)[0].start;
   }
   return Math.max(prevEnd, perf.started_video_t - INTRO_BUFFER);
 }
