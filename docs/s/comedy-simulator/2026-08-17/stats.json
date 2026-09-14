@@ -1,21 +1,45 @@
 {
   "performers": [
     {
-      "name": "Morgan",
-      "started_video_t": 988.0,
-      "ended_video_t": 1578.0,
+      "name": "Rick",
+      "started_video_t": 495.0,
+      "ended_video_t": 824.0,
       "chat": {
-        "pos": 82,
-        "neg": 39,
-        "neu": 141,
+        "pos": 0,
+        "neg": 0,
+        "neu": 0,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Morgan",
+      "started_video_t": 858.0,
+      "ended_video_t": 1142.0,
+      "chat": {
+        "pos": 0,
+        "neg": 0,
+        "neu": 0,
+        "format": 0
+      },
+      "mentions_gated": 0
+    },
+    {
+      "name": "Mister E",
+      "started_video_t": 1176.0,
+      "ended_video_t": 1476.0,
+      "chat": {
+        "pos": 0,
+        "neg": 0,
+        "neu": 0,
         "format": 0
       },
       "mentions_gated": 0
     },
     {
       "name": "Bashar",
-      "started_video_t": 1582.0,
-      "ended_video_t": 2177.0,
+      "started_video_t": 1505.0,
+      "ended_video_t": 1802.0,
       "chat": {
         "pos": 36,
         "neg": 14,
@@ -23,18 +47,6 @@
         "format": 0
       },
       "mentions_gated": 7
-    },
-    {
-      "name": "Mister E",
-      "started_video_t": 1584.0,
-      "ended_video_t": 1872.0,
-      "chat": {
-        "pos": 40,
-        "neg": 19,
-        "neu": 49,
-        "format": 0
-      },
-      "mentions_gated": 5
     },
     {
       "name": "Shane Nelson",
