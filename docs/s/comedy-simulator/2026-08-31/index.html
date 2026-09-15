@@ -34,7 +34,9 @@
   .summaryCard.show { display:block; }
   .sentRow { display:flex; gap:14px; margin-top:6px; font-size:.85rem; }
   .sentRow span.dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
-  .feed { display:none; }
+  .feed { display:none; max-height: 320px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 4px 10px; }
+  .nowPlaying { min-height: 1.6em; margin: 4px 0 14px; font-size: 1rem; font-weight: 600; color: #ffd9a0; }
+  .nowPlaying .chatMsg { font-weight: 500; }
   .feed.show { display:block; }
   .row { display:flex; gap:10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); align-items:flex-start; transition: background 0.3s; }
   .row.active { background: rgba(255,122,0,0.12); border-radius: 8px; padding-left: 6px; padding-right: 6px; }
@@ -65,6 +67,7 @@
   <div class="comics" id="comics"><p class="empty">Loading lineup…</p></div>
 
   <div class="playerWrap"><div id="player"></div></div>
+  <div class="nowPlaying" id="nowPlaying"></div>
   <p class="err" id="err"></p>
 
   <div class="summaryCard" id="summaryCard">
@@ -214,7 +217,7 @@ function maybeInitPlayer() {
   if (!window.__ytApiReady || !night || player) return;
   player = new YT.Player('player', {
     videoId: night.video_id,
-    playerVars: { rel: 0 },
+    playerVars: { rel: 0, cc_load_policy: 0 },
     events: { onReady: () => { playerReady = true; } }
   });
 }
@@ -234,6 +237,16 @@ function findActiveIndex(items, currentTime) {
   return idx;
 }
 
+function renderRowContent(item) {
+  if (item.kind === 'caption') {
+    return item.words.map(w => `<span class="cue" data-t="${w.t}">${w.word}</span>`).join(' ');
+  }
+  const sRaw = (item.sentiment || '').toLowerCase();
+  const sCls = sRaw.startsWith('pos') ? 'sent-pos' : sRaw.startsWith('neg') ? 'sent-neg' : 'sent-neu';
+  const who = item.chat_name || item.author || 'viewer';
+  return `<span class="chatMsg ${sCls}"><span class="author">${who}:</span> ${item.text || ''}</span>`;
+}
+
 function trackPlayback() {
   if (!playerReady || !currentFeedItems.length) return;
   let state;
@@ -242,12 +255,17 @@ function trackPlayback() {
   const currentTime = player.getCurrentTime();
   const idx = findActiveIndex(currentFeedItems, currentTime);
   if (idx < 0) return;
-  const rows = document.querySelectorAll('#feed .row');
+
+  document.getElementById('nowPlaying').innerHTML = renderRowContent(currentFeedItems[idx]);
+
+  const feedEl = document.getElementById('feed');
+  const rows = feedEl.querySelectorAll('.row');
   const targetRow = rows[idx];
   if (!targetRow || targetRow === lastActiveRow) return;
   if (lastActiveRow) lastActiveRow.classList.remove('active');
   targetRow.classList.add('active');
-  targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const targetOffset = targetRow.offsetTop - feedEl.clientHeight / 2 + targetRow.clientHeight / 2;
+  feedEl.scrollTo({ top: Math.max(0, targetOffset), behavior: 'smooth' });
   lastActiveRow = targetRow;
 }
 
@@ -303,6 +321,8 @@ function findIntroLowerBound(perf, prevEnd, sentences) {
 
 function selectComic(name) {
   document.querySelectorAll('.comicBtn').forEach(b => b.classList.toggle('active', b.dataset.name === name));
+  document.getElementById('nowPlaying').innerHTML = '';
+  lastActiveRow = null;
   const ordered = stats.performers.slice().sort((a, b) => a.started_video_t - b.started_video_t);
   const idx = ordered.findIndex(p => p.name === name);
   const perf = ordered[idx];
@@ -334,18 +354,9 @@ function selectComic(name) {
   if (!combined.length) {
     feedEl.innerHTML = '<p class="empty">No captions or chat captured for this set.</p>';
   } else {
-    feedEl.innerHTML = combined.map(item => {
-      if (item.kind === 'caption') {
-        const wordSpans = item.words.map(w =>
-          `<span class="cue" data-t="${w.t}">${w.word}</span>`
-        ).join(' ');
-        return `<div class="row" data-t="${item.t}"><div class="t">${fmtT(item.t)}</div><div class="content">${wordSpans}</div></div>`;
-      }
-      const sRaw = (item.sentiment || '').toLowerCase();
-      const sCls = sRaw.startsWith('pos') ? 'sent-pos' : sRaw.startsWith('neg') ? 'sent-neg' : 'sent-neu';
-      const who = item.chat_name || item.author || 'viewer';
-      return `<div class="row" data-t="${item.t}"><div class="t">${fmtT(item.t)}</div><div class="content chatMsg ${sCls}"><span class="author">${who}:</span> ${item.text || ''}</div></div>`;
-    }).join('');
+    feedEl.innerHTML = combined.map(item =>
+      `<div class="row" data-t="${item.t}"><div class="t">${fmtT(item.t)}</div><div class="content">${renderRowContent(item)}</div></div>`
+    ).join('');
   }
   feedEl.classList.add('show');
   feedEl.querySelectorAll('.cue').forEach(el => {
