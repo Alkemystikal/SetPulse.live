@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>SetPulse — Night Recap</title>
+<title>Comedy Simulator — 2026-08-31</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
   :root { --ink:#f0eafa; --orange:#ff7a00; --green:#39ff14; --card:rgba(255,255,255,0.06); --mut:#8a7ba0; --pos:#39ff14; --neg:#ff6b6b; --neu:#8a7ba0; }
-  * { box-sizing:border-box; }
+  * { box-sizing:border-box }
   html, body { height:100%; margin:0; }
   body {
     background: radial-gradient(circle at center, #3a1f5d 0%, #1a0f2e 45%, #000000 100%);
@@ -54,6 +54,15 @@
   .err { color: #ff6b6b; font-weight: 700; margin: 10px 0; }
   a.back { color: #c9a6ff; font-size: .85rem; }
   .logo { width:64px; height:64px; border-radius:50%; display:block; margin:8px auto 4px; }
+
+  #searchBox { width:100%; min-height:46px; border-radius:12px; border:1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06); color: var(--ink); padding: 0 14px; font-size: 1rem; box-sizing: border-box; }
+  #searchBox::placeholder { color: var(--mut); }
+  #searchStatus { color: var(--mut); font-size: .82rem; margin-top: 8px; }
+  .result { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+  .result .t { width:auto; }
+  .result .onstage { color: var(--mut); font-size: .78rem; margin-left: 6px; }
+  .result .cap { color: var(--mut); font-style: italic; font-size: .84rem; }
 </style>
 </head>
 <body>
@@ -65,6 +74,11 @@
 
   <h2>Lineup</h2>
   <div class="comics" id="comics"><p class="empty">Loading lineup…</p></div>
+
+  <h2>Search comics &amp; chat</h2>
+  <input id="searchBox" type="text" placeholder="Search a comic's name, a chat comment, or dialogue…" autocomplete="off">
+  <div id="searchStatus"></div>
+  <div id="results"></div>
 
   <div class="playerWrap"><div id="player"></div></div>
   <div class="nowPlaying" id="nowPlaying"></div>
@@ -237,14 +251,17 @@ function findActiveIndex(items, currentTime) {
   return idx;
 }
 
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 function renderRowContent(item) {
   if (item.kind === 'caption') {
-    return item.words.map(w => `<span class="cue" data-t="${w.t}">${w.word}</span>`).join(' ');
+    return item.words ? item.words.map(w => `<span class="cue" data-t="${w.t}">${esc(w.word)}</span>`).join(' ')
+      : `<span class="cue" data-t="${item.t}">${esc(item.text)}</span>`;
   }
   const sRaw = (item.sentiment || '').toLowerCase();
   const sCls = sRaw.startsWith('pos') ? 'sent-pos' : sRaw.startsWith('neg') ? 'sent-neg' : 'sent-neu';
   const who = item.chat_name || item.author || 'viewer';
-  return `<span class="chatMsg ${sCls}"><span class="author">${who}:</span> ${item.text || ''}</span>`;
+  return `<span class="chatMsg ${sCls}"><span class="author">${esc(who)}:</span> ${esc(item.text || '')}</span>`;
 }
 
 function trackPlayback() {
@@ -363,6 +380,39 @@ function selectComic(name) {
     el.onclick = () => seekTo(parseFloat(el.dataset.t));
   });
 }
+
+let searchTimer = null;
+function runSearch(q) {
+  const status = document.getElementById('searchStatus');
+  const results = document.getElementById('results');
+  if (!q) { status.textContent = ''; results.innerHTML = ''; return; }
+  const needle = q.toLowerCase();
+  const chatHits = chatRows.filter(r =>
+    (r.current_performer || '').toLowerCase().includes(needle) ||
+    (r.author || '').toLowerCase().includes(needle) ||
+    (r.text || '').toLowerCase().includes(needle)
+  ).map(r => ({ kind: 'chat', t: parseFloat(r.video_t) || 0, ...r }));
+  const capHits = captionSentences.filter(s => s.text.toLowerCase().includes(needle))
+    .map(s => ({ kind: 'caption', t: s.start, text: s.text }));
+  const hits = chatHits.concat(capHits).sort((a, b) => a.t - b.t).slice(0, 200);
+  status.textContent = hits.length + ' match(es)' + (hits.length === 200 ? ' (showing first 200)' : '');
+  results.innerHTML = hits.map(r => {
+    if (r.kind === 'caption') {
+      return `<div class="result"><span class="t cue" data-t="${r.t}">${fmtT(r.t)}</span> <span class="cap">🎤 ${esc(r.text)}</span></div>`;
+    }
+    const sRaw = (r.sentiment || '').toLowerCase();
+    const sCls = sRaw.startsWith('pos') ? 'sent-pos' : sRaw.startsWith('neg') ? 'sent-neg' : 'sent-neu';
+    const who = r.chat_name || r.author || 'viewer';
+    return `<div class="result"><span class="t cue" data-t="${r.t}">${fmtT(r.t)}</span>${r.current_performer ? '<span class="onstage">on stage: ' + esc(r.current_performer) + '</span>' : ''}<div class="chatMsg ${sCls}"><span class="author">${esc(who)}:</span> ${esc(r.text)}</div></div>`;
+  }).join('');
+  results.querySelectorAll('.cue').forEach(el => { el.onclick = () => seekTo(parseFloat(el.dataset.t)); });
+}
+
+document.getElementById('searchBox').addEventListener('input', (e) => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  searchTimer = setTimeout(() => runSearch(q), 200);
+});
 
 async function load() {
   try {
