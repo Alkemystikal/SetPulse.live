@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SetPulse — Host</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<!--
+  Host-only door. Not linked from the public hub, list, order, or nights
+  pages, and never printed on a flyer or QR. Bookmark this URL
+  (setpulse.live/mc) instead of the raw /exec link — if the deployment
+  URL ever changes, only this one file needs updating, not every
+  bookmark or note that points at the script directly.
+-->
+<meta http-equiv="refresh" content="0; url=https://script.google.com/macros/s/AKfycbzzak7TIvNwJDX_9Ea7S79RU_9jAXaOKdOvE2Uc1cz_AkEdCmvZpVjpkyzHi1RhEwYoEg/exec?page=mc">
+<link rel="canonical" href="https://script.google.com/macros/s/AKfycbzzak7TIvNwJDX_9Ea7S79RU_9jAXaOKdOvE2Uc1cz_AkEdCmvZpVjpkyzHi1RhEwYoEg/exec?page=mc">
+<style>
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    font-family: -apple-system, sans-serif;
+    color: #f0eafa;
+    background: radial-gradient(circle at center, #3a1f5d 0%, #1a0f2e 45%, #000000 100%);
+    min-height: 100vh;
+    text-align: center;
+    padding: 24px;
+  }
+  a { color: #ff7a00; font-weight: 700; }
+  p { color: #b8a9cc; font-size: .9rem; }
+</style>
+</head>
+<body>
+  <div>
+    <p>Redirecting to the host deck&hellip;</p>
+    <p><a href="https://script.google.com/macros/s/AKfycbzzak7TIvNwJDX_9Ea7S79RU_9jAXaOKdOvE2Uc1cz_AkEdCmvZpVjpkyzHi1RhEwYoEg/exec?page=mc">Tap here if it doesn't happen automatically</a></p>
+  </div>
+</body>
+</html>
