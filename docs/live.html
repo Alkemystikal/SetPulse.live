@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SetPulse — Live</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 640px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 1.3rem; margin-bottom: 4px; }
+  .sub { color: #888; font-size: 0.9rem; margin-bottom: 20px; }
+  .card { border: 1px solid #8883; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .stat-row { display: flex; justify-content: space-between; margin: 6px 0; }
+  .stat-row .label { color: #888; }
+  .stat-row .value { font-weight: 600; }
+  #status { padding: 12px; border-radius: 10px; background: #8882; margin-bottom: 16px; font-size: 0.95rem; }
+  .bucket { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #8882; font-size: 0.85rem; }
+  .updated { color: #888; font-size: 0.8rem; margin-top: 16px; }
+</style>
+</head>
+<body>
+  <h1>Live sentiment</h1>
+  <div class="sub">Updates every ~5 minutes while a show is live. No laptop required — this page pulls straight from GitHub.</div>
+  <div id="status">Checking for a live show…</div>
+  <div id="content"></div>
+  <div class="updated" id="updated"></div>
+
+<script>
+async function fetchJSON(path) {
+  const res = await fetch(path + "?t=" + Date.now());
+  if (!res.ok) throw new Error(res.status);
+  return res.json();
+}
+
+function sentimentLabel(v) {
+  if (v > 0.15) return "Positive 🙂";
+  if (v < -0.15) return "Negative 🙁";
+  return "Neutral 😐";
+}
+
+async function refresh() {
+  const statusEl = document.getElementById("status");
+  const contentEl = document.getElementById("content");
+  const updatedEl = document.getElementById("updated");
+  try {
+    const state = await fetchJSON("live/live_poll_state.json");
+    if (!state.video_id) {
+      statusEl.textContent = "No show is currently live. This page will start updating automatically once one starts (checked every ~5 minutes).";
+      contentEl.innerHTML = "";
+      updatedEl.textContent = "";
+      return;
+    }
+    const stats = await fetchJSON(`live/${state.video_id}.stats.json`);
+    statusEl.textContent = `Live now — video ${state.video_id}`;
+
+    const buckets = Object.entries(stats.buckets || {}).sort().reverse().slice(0, 6);
+    contentEl.innerHTML = `
+      <div class="card">
+        <div class="stat-row"><span class="label">Total messages</span><span class="value">${stats.totals.messages}</span></div>
+        <div class="stat-row"><span class="label">Overall sentiment</span><span class="value">${sentimentLabel(stats.totals.avg_sentiment)} (${stats.totals.avg_sentiment})</span></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:600;margin-bottom:8px;">Last ${buckets.length} five-minute windows</div>
+        ${buckets.map(([time, b]) => `
+          <div class="bucket">
+            <span>${new Date(time).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}</span>
+            <span>${b.messages} msgs · ${sentimentLabel(b.avg_sentiment)}</span>
+          </div>`).join("")}
+      </div>
+    `;
+    updatedEl.textContent = "Data last updated: " + new Date(stats.updated_at).toLocaleTimeString();
+  } catch (e) {
+    statusEl.textContent = "No live data yet — either nothing has ever gone live, or the workflow hasn't run its first poll.";
+    contentEl.innerHTML = "";
+  }
+}
+
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>
