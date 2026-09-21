@@ -29,7 +29,12 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install yt-dlp
+        run: pip install -U yt-dlp
+
+      - name: Install deno (yt-dlp needs a JS runtime to get past YouTube's bot check)
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh
+          echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
 
       - name: Run pipeline (auto-detect latest stream)
         if: ${{ github.event.inputs.video_id == '' }}
