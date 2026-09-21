@@ -63,6 +63,76 @@ YOUTUBE_API = "https://www.googleapis.com/youtube/v3"
 # local test) on an older yt-dlp, either upgrade yt-dlp or clear this list.
 YT_DLP_JS_RUNTIME_ARGS = ["--js-runtimes", "deno"]
 
+# On top of the JS challenge, YouTube also wants proof the request is
+# coming from a signed-in browser session ("Sign in to confirm you're not
+# a bot"), which the JS runtime alone doesn't satisfy. The fix is a cookies
+# file from a real signed-in YouTube session (the workflow writes the
+# YTDLP_COOKIES secret to disk and points this at it).
+#
+# That cookie export can come from any browser/device - including an iOS
+# Safari cookie-export app, which typically exports JSON, not the
+# Netscape-format cookies.txt yt-dlp expects. Rather than ask whoever's
+# exporting to get the format exactly right, _normalize_cookies_file below
+# accepts either shape and converts JSON to Netscape format automatically.
+YT_DLP_COOKIES_FILE = os.environ.get("YT_DLP_COOKIES_FILE", "")
+
+
+def _normalize_cookies_file(raw_path):
+    """
+    Accepts whatever a cookie-export tool produced at raw_path and returns
+    the path to a Netscape-format cookies.txt yt-dlp can actually use.
+    - Already Netscape format (starts with the standard header, or is
+      tab-separated with 7 fields per line) -> used as-is.
+    - A JSON array of cookie objects (the common shape most browser
+      extensions - including iOS Safari cookie apps - export, with fields
+      like domain/name/value/path/expirationDate/secure) -> converted.
+    """
+    with open(raw_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    stripped = content.strip()
+    if not stripped:
+        return raw_path
+    if stripped.startswith("#") or "\t" in stripped.splitlines()[0]:
+        return raw_path  # already Netscape format
+    if stripped[0] not in "[{":
+        return raw_path  # not JSON, not obviously ours to fix - pass through
+
+    try:
+        data = json.loads(stripped)
+    except json.JSONDecodeError:
+        return raw_path
+    if isinstance(data, dict):
+        data = data.get("cookies", [data])
+
+    lines = ["# Netscape HTTP Cookie File", "# Auto-converted from JSON export"]
+    for c in data:
+        if not isinstance(c, dict) or not c.get("name"):
+            continue
+        domain = c.get("domain", "") or ""
+        include_subdomains = "TRUE" if domain.startswith(".") else "FALSE"
+        path = c.get("path", "/") or "/"
+        secure = "TRUE" if c.get("secure") else "FALSE"
+        expiry = c.get("expirationDate") or c.get("expiry") or c.get("expires") or 0
+        try:
+            expiry = int(float(expiry))
+        except (TypeError, ValueError):
+            expiry = 0
+        name = c.get("name", "")
+        value = c.get("value", "")
+        lines.append("\t".join([domain, include_subdomains, path, secure, str(expiry), name, value]))
+
+    normalized_path = raw_path + ".normalized.txt"
+    with open(normalized_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    return normalized_path
+
+
+def _yt_dlp_auth_args():
+    if YT_DLP_COOKIES_FILE and os.path.exists(YT_DLP_COOKIES_FILE):
+        usable_path = _normalize_cookies_file(YT_DLP_COOKIES_FILE)
+        return ["--cookies", usable_path]
+    return []
+
 # --------------------------------------------------------------------------
 # Lightweight built-in sentiment scorer.
 #
@@ -209,7 +279,7 @@ def download_live_chat(video_id, workdir):
     cmd = [
         "yt-dlp", "--skip-download", "--write-subs",
         "--sub-langs", "live_chat", "--sub-format", "json",
-        *YT_DLP_JS_RUNTIME_ARGS,
+        *YT_DLP_JS_RUNTIME_ARGS, *_yt_dlp_auth_args(),
         "-o", os.path.join(workdir, "%(id)s.%(ext)s"), url,
     ]
     subprocess.run(cmd, check=True)
@@ -306,7 +376,7 @@ def download_auto_captions(video_id, workdir):
     cmd = [
         "yt-dlp", "--skip-download", "--write-auto-subs",
         "--sub-langs", "en", "--sub-format", "json3",
-        *YT_DLP_JS_RUNTIME_ARGS,
+        *YT_DLP_JS_RUNTIME_ARGS, *_yt_dlp_auth_args(),
         "-o", os.path.join(workdir, "%(id)s.%(ext)s"), url,
     ]
     subprocess.run(cmd, check=True)
@@ -679,3 +749,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
