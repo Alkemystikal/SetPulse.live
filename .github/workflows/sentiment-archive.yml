@@ -38,12 +38,25 @@ jobs:
 
       - name: Write YouTube cookies (lets yt-dlp pass YouTube's "sign in to confirm
           you're not a bot" check - see YTDLP_COOKIES secret)
+        env:
+          # Passed through the environment, NOT interpolated into the
+          # script text below - a multi-line secret embedded directly into
+          # a run: block (via ${{ }}) shows up as many masked lines in the
+          # log preview, one per line of the secret. Referencing it as an
+          # env var here avoids that entirely.
+          YTDLP_COOKIES: ${{ secrets.YTDLP_COOKIES }}
         run: |
-          if [ -n "${{ secrets.YTDLP_COOKIES }}" ]; then
-            printf '%s' "${{ secrets.YTDLP_COOKIES }}" > "$RUNNER_TEMP/yt_cookies.txt"
+          if [ -n "$YTDLP_COOKIES" ]; then
+            printf '%s' "$YTDLP_COOKIES" > "$RUNNER_TEMP/yt_cookies.txt"
             echo "YT_DLP_COOKIES_FILE=$RUNNER_TEMP/yt_cookies.txt" >> "$GITHUB_ENV"
+            BYTES=$(wc -c < "$RUNNER_TEMP/yt_cookies.txt")
+            FIRST_CHAR=$(head -c 1 "$RUNNER_TEMP/yt_cookies.txt")
+            echo "YTDLP_COOKIES secret found - wrote $BYTES bytes to file (starts with '$FIRST_CHAR' - "
+            echo "expect '#' for Netscape format, or '[' or '{' for a JSON export; anything else "
+            echo "likely means something other than the cookie export got pasted in)."
           else
-            echo "No YTDLP_COOKIES secret set - continuing without cookies (may hit YouTube's bot check)"
+            echo "YTDLP_COOKIES secret is NOT set (or is empty) - continuing without cookies, "
+            echo "which will likely hit YouTube's bot check."
           fi
 
       - name: Run pipeline (auto-detect latest stream)
