@@ -54,6 +54,15 @@ from datetime import datetime, timedelta, timezone
 
 YOUTUBE_API = "https://www.googleapis.com/youtube/v3"
 
+# YouTube now often requires solving a small JS challenge before it'll
+# serve a video's data (yt-dlp's own warning: "No supported JavaScript
+# runtime could be found... YouTube extraction without a JS runtime has
+# been deprecated"). The GitHub Actions workflow installs deno and runs
+# `pip install -U yt-dlp` specifically so this flag is both available and
+# actually used. If you're running this outside that workflow (e.g. a
+# local test) on an older yt-dlp, either upgrade yt-dlp or clear this list.
+YT_DLP_JS_RUNTIME_ARGS = ["--js-runtimes", "deno"]
+
 # --------------------------------------------------------------------------
 # Lightweight built-in sentiment scorer.
 #
@@ -200,6 +209,7 @@ def download_live_chat(video_id, workdir):
     cmd = [
         "yt-dlp", "--skip-download", "--write-subs",
         "--sub-langs", "live_chat", "--sub-format", "json",
+        *YT_DLP_JS_RUNTIME_ARGS,
         "-o", os.path.join(workdir, "%(id)s.%(ext)s"), url,
     ]
     subprocess.run(cmd, check=True)
@@ -296,6 +306,7 @@ def download_auto_captions(video_id, workdir):
     cmd = [
         "yt-dlp", "--skip-download", "--write-auto-subs",
         "--sub-langs", "en", "--sub-format", "json3",
+        *YT_DLP_JS_RUNTIME_ARGS,
         "-o", os.path.join(workdir, "%(id)s.%(ext)s"), url,
     ]
     subprocess.run(cmd, check=True)
