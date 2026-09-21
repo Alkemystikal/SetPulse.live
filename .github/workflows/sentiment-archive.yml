@@ -81,6 +81,10 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           SETPULSE_ARCHIVE_BASE: ${{ secrets.SETPULSE_ARCHIVE_BASE }}
           SETPULSE_CHANNEL_ID: UC_47Pv7ji6eRoRggwyc25ZQ
+          # Optional - only takes effect once the YT_DLP_PROXY secret exists.
+          # Routes yt-dlp's YouTube request through a residential proxy
+          # instead of this runner's own (often bot-check-flagged) IP.
+          YT_DLP_PROXY: ${{ secrets.YT_DLP_PROXY }}
         run: python3 scripts/sentiment_archive.py --auto --out ./data/latest
 
       - name: Run pipeline (manual backfill)
@@ -88,6 +92,7 @@ jobs:
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           SETPULSE_ARCHIVE_BASE: ${{ secrets.SETPULSE_ARCHIVE_BASE }}
+          YT_DLP_PROXY: ${{ secrets.YT_DLP_PROXY }}
         run: |
           python3 scripts/sentiment_archive.py \
             --video-id "${{ github.event.inputs.video_id }}" \
