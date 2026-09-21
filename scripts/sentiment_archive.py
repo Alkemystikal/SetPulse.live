@@ -530,6 +530,40 @@ def load_demo_inputs(fixtures_dir):
     return chat, windows_payload["windows"], windows_payload["stream_start"]
 
 
+def extract_video_id(raw):
+    """
+    Accepts a bare video ID OR a pasted YouTube URL of any common shape
+    (youtu.be/..., youtube.com/watch?v=..., /live/..., /shorts/...) and
+    returns just the ID. Also cleans up stray whitespace/punctuation that
+    tends to come along with a manual copy-paste (a trailing period from
+    autocorrect, a stray space, share-link tracking params like ?si=...).
+    """
+    if not raw:
+        return raw
+    s = raw.strip().strip(".,;:!?\"'")
+    m = re.search(r"(?:youtu\.be/|youtube\.com/(?:watch\?v=|live/|shorts/|embed/))([A-Za-z0-9_-]{6,})", s)
+    if m:
+        s = m.group(1)
+    s = s.split("&")[0].split("?")[0].split("#")[0]
+    return s.strip()
+
+
+def sanitize_date(raw):
+    """Pulls a YYYY-MM-DD out of whatever was typed, tolerating a stray
+    trailing period/space/etc. from manual entry."""
+    if not raw:
+        return raw
+    s = raw.strip().strip(".,;:!?\"'")
+    m = re.search(r"\d{4}-\d{2}-\d{2}", s)
+    return m.group(0) if m else s
+
+
+def sanitize_url(raw):
+    if not raw:
+        return raw
+    return raw.strip().strip(".,;:!?\"'")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--auto", action="store_true", help="Auto-detect latest completed stream on --channel-id")
@@ -542,6 +576,14 @@ def main():
     ap.add_argument("--out", default="./out")
     ap.add_argument("--demo", action="store_true", help="Run entirely on bundled sample fixtures, no network/yt-dlp")
     args = ap.parse_args()
+
+    # Clean up manually-typed/pasted inputs before they hit anything else -
+    # a stray trailing period, space, or a full URL where a bare ID was
+    # expected has already caused real failures here.
+    args.video_id = extract_video_id(args.video_id) if args.video_id else args.video_id
+    args.date = sanitize_date(args.date) if args.date else args.date
+    args.archive_base = sanitize_url(args.archive_base) if args.archive_base else args.archive_base
+    args.channel_id = args.channel_id.strip() if args.channel_id else args.channel_id
 
     if args.demo:
         fixtures_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
