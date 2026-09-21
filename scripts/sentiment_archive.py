@@ -63,6 +63,17 @@ YOUTUBE_API = "https://www.googleapis.com/youtube/v3"
 # local test) on an older yt-dlp, either upgrade yt-dlp or clear this list.
 YT_DLP_JS_RUNTIME_ARGS = ["--js-runtimes", "deno"]
 
+# By default yt-dlp tries several "client" variants (web, some mobile/TV/
+# app-internal ones) and picks whichever answers first. Some of those
+# variants (e.g. "visionos") aren't ones a real signed-in browser session
+# ever presents as, so cookies exported from an actual browser don't work
+# for them and they get blocked by YouTube's bot check even with a valid
+# cookies file. Restricting to "web" - the ordinary youtube.com website,
+# not a different device or app - matches what the exported cookies
+# actually are, so they get used instead of being wasted on a client they
+# were never valid for.
+YT_DLP_CLIENT_ARGS = ["--extractor-args", "youtube:player_client=web"]
+
 # On top of the JS challenge, YouTube also wants proof the request is
 # coming from a signed-in browser session ("Sign in to confirm you're not
 # a bot"), which the JS runtime alone doesn't satisfy. The fix is a cookies
@@ -287,7 +298,7 @@ def download_live_chat(video_id, workdir):
     cmd = [
         "yt-dlp", "--skip-download", "--write-subs",
         "--sub-langs", "live_chat", "--sub-format", "json",
-        *YT_DLP_JS_RUNTIME_ARGS, *_yt_dlp_auth_args(),
+        *YT_DLP_JS_RUNTIME_ARGS, *YT_DLP_CLIENT_ARGS, *_yt_dlp_auth_args(),
         "-o", os.path.join(workdir, "%(id)s.%(ext)s"), url,
     ]
     subprocess.run(cmd, check=True)
@@ -389,7 +400,7 @@ def download_auto_captions(video_id, workdir):
     cmd = [
         "yt-dlp", "--skip-download", "--write-auto-subs",
         "--sub-langs", "en", "--sub-format", "json3",
-        *YT_DLP_JS_RUNTIME_ARGS, *_yt_dlp_auth_args(),
+        *YT_DLP_JS_RUNTIME_ARGS, *YT_DLP_CLIENT_ARGS, *_yt_dlp_auth_args(),
         "-o", os.path.join(workdir, "%(id)s.%(ext)s"), url,
     ]
     subprocess.run(cmd, check=True)
