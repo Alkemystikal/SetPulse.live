@@ -75,16 +75,43 @@ jobs:
             echo "which will likely hit YouTube's bot check."
           fi
 
-      - name: Check proxy secret (byte count only - never prints the value)
+      - name: Validate proxy secret format (checks structure only, never prints the value)
         env:
           YT_DLP_PROXY: ${{ secrets.YT_DLP_PROXY }}
         run: |
-          if [ -n "$YT_DLP_PROXY" ]; then
-            CHARS=$(printf '%s' "$YT_DLP_PROXY" | wc -c)
-            echo "YT_DLP_PROXY secret found - $CHARS characters."
-          else
-            echo "YT_DLP_PROXY secret is NOT set (or is empty) - yt-dlp will use this runner's own IP."
-          fi
+          python3 - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+
+          value = os.environ.get("YT_DLP_PROXY", "").strip()
+          if not value:
+              print("YT_DLP_PROXY is empty - yt-dlp will use this runner's own IP.")
+              raise SystemExit(0)
+
+          parsed = urlsplit(value)
+          try:
+              port = parsed.port
+          except ValueError as exc:
+              raise SystemExit(f"YT_DLP_PROXY has an invalid port: {exc}")
+
+          problems = []
+          if parsed.scheme not in {"http", "https", "socks4", "socks5"}:
+              problems.append(f"scheme is {parsed.scheme!r}, expected http/https/socks4/socks5 "
+                               f"(the value needs to START with e.g. 'http://', not just "
+                               f"'username:password@host:port')")
+          if not parsed.hostname:
+              problems.append("no hostname found after the '@'")
+          if port is None:
+              problems.append("no numeric port found after the hostname (needs a ':1234' at the end)")
+          if not parsed.username:
+              problems.append("no username found before the ':' in 'username:password@'")
+
+          if problems:
+              raise SystemExit("YT_DLP_PROXY doesn't look like a full proxy URL:\n  - " +
+                                "\n  - ".join(problems))
+          print(f"YT_DLP_PROXY format looks valid: {parsed.scheme}://{parsed.hostname}:{port} "
+                f"(username/password present, values not shown)")
+          PY
 
       - name: Run pipeline (auto-detect latest stream)
         if: ${{ github.event.inputs.video_id == '' }}
