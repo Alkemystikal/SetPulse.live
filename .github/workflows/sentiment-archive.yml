@@ -1,39 +1,45 @@
-name: SetPulse sentiment archive
+name: SetPulse live sentiment poll
 
-# Runs on its own - no terminal, no manual script run. Add YOUTUBE_API_KEY
-# and SETPULSE_ARCHIVE_BASE as repo secrets (Settings -> Secrets and
-# variables -> Actions) before the first run.
+# Runs every 5 minutes, but ONLY during the scheduled windows below - not
+# round the clock. It's a fast, cheap no-op (about 2-3 YouTube API quota
+# units) whenever nothing is currently live, so it would have been safe to
+# run all day too, but there's no reason to check when nothing's ever on.
+# When a show IS live, it pulls whatever chat has arrived since the last
+# poll and updates that show's rolling data under data/live/.
+#
+# This is a companion to sentiment-archive.yml, not a replacement - the
+# definitive per-comic report still only comes from the regular daily run,
+# once the show has ended and its data has landed in the Sheet. If a show
+# somehow runs past the end of the window below, live updates just stop for
+# the rest of it - the post-show run still captures everything accurately
+# regardless, since it pulls the full replay after the fact.
+#
+# GitHub Actions schedules always run in UTC, so show times need
+# converting. Hawaii (HST) never observes daylight saving, so the offset
+# is always simply: HST time = UTC time minus 10 hours (or: UTC = HST + 10
+# hours, rolling over to the next UTC day/weekday when that crosses
+# midnight). Below: Monday 6:00 PM HST through Tuesday 1:00 AM HST (a
+# 7-hour window around a 6:30 PM start, with buffer on both ends) is
+# Tuesday 4:00-10:59 AM UTC.
+#
+# To add another day/time to check (e.g. a second weekly show), add
+# another "- cron:" line below with its own UTC-converted window, using
+# the same HST-minus-10-hours math. Cron fields are: minute hour
+# day-of-month month day-of-week (day-of-week: 0=Sunday, 1=Monday, ...,
+# 6=Saturday - remember the UTC weekday can be one day ahead of the HST
+# weekday once you cross midnight, as it does here: an HST Monday evening
+# show becomes a UTC Tuesday window).
 on:
   schedule:
-    - cron: "0 12 * * *"   # every day at 12:00 UTC - adjust to taste
-  workflow_dispatch:
-    inputs:
-      video_id:
-        description: "Optional: specific video ID to backfill (leave blank to auto-detect the latest completed stream)"
-        required: false
-      date:
-        description: "Optional: show date YYYY-MM-DD (required if video_id is set)"
-        required: false
+    - cron: "*/5 4-10 * * 2"   # Mon 6:00 PM - Tue 1:00 AM HST (Tue 04:00-10:59 UTC)
+  workflow_dispatch: {}
 
 permissions:
   contents: write
 
 jobs:
-  archive:
+  poll:
     runs-on: ubuntu-latest
-    # This sidecar container runs alongside the job and generates "PO tokens"
-    # (proof-of-origin tokens). YouTube has been requiring these in addition
-    # to cookies for most automated requests, especially from cloud/datacenter
-    # IPs like GitHub's runners - cookies alone stopped being enough. This
-    # doesn't pretend to be a different app or device; it's just a small local
-    # helper yt-dlp talks to on 127.0.0.1:4416 to fetch a token YouTube asks
-    # for. yt-dlp finds it automatically once it's running and the matching
-    # pip packages (below) are installed - no extra flags needed.
-    services:
-      bgutil-pot:
-        image: brainicism/bgutil-ytdlp-pot-provider
-        ports:
-          - 4416:4416
     steps:
       - uses: actions/checkout@v4
 
@@ -41,68 +47,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install -U yt-dlp yt-dlp-get-pot bgutil-ytdlp-pot-provider
-
-      - name: Install deno (yt-dlp needs a JS runtime to get past YouTube's bot check)
-        run: |
-          curl -fsSL https://deno.land/install.sh | sh
-          echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
-
-      - name: Give the PO token provider a moment to finish starting
-        run: sleep 5
-
-      - name: Write YouTube cookies (lets yt-dlp pass YouTube's "sign in to confirm
-          you're not a bot" check - see YTDLP_COOKIES secret)
-        env:
-          # Passed through the environment, NOT interpolated into the
-          # script text below - a multi-line secret embedded directly into
-          # a run: block (via ${{ }}) shows up as many masked lines in the
-          # log preview, one per line of the secret. Referencing it as an
-          # env var here avoids that entirely.
-          YTDLP_COOKIES: ${{ secrets.YTDLP_COOKIES }}
-        run: |
-          if [ -n "$YTDLP_COOKIES" ]; then
-            printf '%s' "$YTDLP_COOKIES" > "$RUNNER_TEMP/yt_cookies.txt"
-            echo "YT_DLP_COOKIES_FILE=$RUNNER_TEMP/yt_cookies.txt" >> "$GITHUB_ENV"
-            BYTES=$(wc -c < "$RUNNER_TEMP/yt_cookies.txt")
-            FIRST_CHAR=$(head -c 1 "$RUNNER_TEMP/yt_cookies.txt")
-            echo "YTDLP_COOKIES secret found - wrote $BYTES bytes to file (starts with '$FIRST_CHAR' - "
-            echo "expect '#' for Netscape format, or '[' or '{' for a JSON export; anything else "
-            echo "likely means something other than the cookie export got pasted in)."
-          else
-            echo "YTDLP_COOKIES secret is NOT set (or is empty) - continuing without cookies, "
-            echo "which will likely hit YouTube's bot check."
-          fi
-
-      - name: Run pipeline (auto-detect latest stream)
-        if: ${{ github.event.inputs.video_id == '' }}
+      - name: Poll live chat (no-op if nothing is currently live)
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          SETPULSE_ARCHIVE_BASE: ${{ secrets.SETPULSE_ARCHIVE_BASE }}
           SETPULSE_CHANNEL_ID: UC_47Pv7ji6eRoRggwyc25ZQ
-          # Optional - only takes effect once the YT_DLP_PROXY secret exists.
-          # Routes yt-dlp's YouTube request through a residential proxy
-          # instead of this runner's own (often bot-check-flagged) IP.
-          YT_DLP_PROXY: ${{ secrets.YT_DLP_PROXY }}
-        run: python3 scripts/sentiment_archive.py --auto --out ./data/latest
+        run: python3 scripts/sentiment_archive.py --live-poll --channel-id "$SETPULSE_CHANNEL_ID" --out ./data/live
 
-      - name: Run pipeline (manual backfill)
-        if: ${{ github.event.inputs.video_id != '' }}
-        env:
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          SETPULSE_ARCHIVE_BASE: ${{ secrets.SETPULSE_ARCHIVE_BASE }}
-          YT_DLP_PROXY: ${{ secrets.YT_DLP_PROXY }}
-        run: |
-          python3 scripts/sentiment_archive.py \
-            --video-id "${{ github.event.inputs.video_id }}" \
-            --date "${{ github.event.inputs.date }}" \
-            --out ./data/${{ github.event.inputs.date }}
-
-      - name: Commit and push results
+      - name: Commit and push live update (only if something changed)
         run: |
           git config user.name "setpulse-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/
-          git diff --staged --quiet || git commit -m "Auto-archive: sentiment data $(date -u +%Y-%m-%d)"
+          git add data/live/
+          git diff --staged --quiet || git commit -m "Live sentiment poll: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push
