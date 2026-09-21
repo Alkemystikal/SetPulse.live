@@ -36,6 +36,16 @@ jobs:
           curl -fsSL https://deno.land/install.sh | sh
           echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
 
+      - name: Write YouTube cookies (lets yt-dlp pass YouTube's "sign in to confirm
+          you're not a bot" check - see YTDLP_COOKIES secret)
+        run: |
+          if [ -n "${{ secrets.YTDLP_COOKIES }}" ]; then
+            printf '%s' "${{ secrets.YTDLP_COOKIES }}" > "$RUNNER_TEMP/yt_cookies.txt"
+            echo "YT_DLP_COOKIES_FILE=$RUNNER_TEMP/yt_cookies.txt" >> "$GITHUB_ENV"
+          else
+            echo "No YTDLP_COOKIES secret set - continuing without cookies (may hit YouTube's bot check)"
+          fi
+
       - name: Run pipeline (auto-detect latest stream)
         if: ${{ github.event.inputs.video_id == '' }}
         env:
