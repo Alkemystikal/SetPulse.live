@@ -1,0 +1,59 @@
+name: SetPulse sentiment archive
+
+# Runs on its own - no terminal, no manual script run. Add YOUTUBE_API_KEY
+# and SETPULSE_ARCHIVE_BASE as repo secrets (Settings -> Secrets and
+# variables -> Actions) before the first run.
+on:
+  schedule:
+    - cron: "0 12 * * *"   # every day at 12:00 UTC - adjust to taste
+  workflow_dispatch:
+    inputs:
+      video_id:
+        description: "Optional: specific video ID to backfill (leave blank to auto-detect the latest completed stream)"
+        required: false
+      date:
+        description: "Optional: show date YYYY-MM-DD (required if video_id is set)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install yt-dlp
+
+      - name: Run pipeline (auto-detect latest stream)
+        if: ${{ github.event.inputs.video_id == '' }}
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          SETPULSE_ARCHIVE_BASE: ${{ secrets.SETPULSE_ARCHIVE_BASE }}
+          SETPULSE_CHANNEL_ID: UC_47Pv7ji6eRoRggwyc25ZQ
+        run: python3 scripts/sentiment_archive.py --auto --out ./data/latest
+
+      - name: Run pipeline (manual backfill)
+        if: ${{ github.event.inputs.video_id != '' }}
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          SETPULSE_ARCHIVE_BASE: ${{ secrets.SETPULSE_ARCHIVE_BASE }}
+        run: |
+          python3 scripts/sentiment_archive.py \
+            --video-id "${{ github.event.inputs.video_id }}" \
+            --date "${{ github.event.inputs.date }}" \
+            --out ./data/${{ github.event.inputs.date }}
+
+      - name: Commit and push results
+        run: |
+          git config user.name "setpulse-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/
+          git diff --staged --quiet || git commit -m "Auto-archive: sentiment data $(date -u +%Y-%m-%d)"
+          git push
