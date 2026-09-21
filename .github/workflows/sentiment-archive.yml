@@ -21,6 +21,19 @@ permissions:
 jobs:
   archive:
     runs-on: ubuntu-latest
+    # This sidecar container runs alongside the job and generates "PO tokens"
+    # (proof-of-origin tokens). YouTube has been requiring these in addition
+    # to cookies for most automated requests, especially from cloud/datacenter
+    # IPs like GitHub's runners - cookies alone stopped being enough. This
+    # doesn't pretend to be a different app or device; it's just a small local
+    # helper yt-dlp talks to on 127.0.0.1:4416 to fetch a token YouTube asks
+    # for. yt-dlp finds it automatically once it's running and the matching
+    # pip packages (below) are installed - no extra flags needed.
+    services:
+      bgutil-pot:
+        image: brainicism/bgutil-ytdlp-pot-provider
+        ports:
+          - 4416:4416
     steps:
       - uses: actions/checkout@v4
 
@@ -29,12 +42,15 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -U yt-dlp
+        run: pip install -U yt-dlp yt-dlp-get-pot bgutil-ytdlp-pot-provider
 
       - name: Install deno (yt-dlp needs a JS runtime to get past YouTube's bot check)
         run: |
           curl -fsSL https://deno.land/install.sh | sh
           echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
+
+      - name: Give the PO token provider a moment to finish starting
+        run: sleep 5
 
       - name: Write YouTube cookies (lets yt-dlp pass YouTube's "sign in to confirm
           you're not a bot" check - see YTDLP_COOKIES secret)
