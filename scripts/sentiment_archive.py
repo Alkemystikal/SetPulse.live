@@ -312,15 +312,20 @@ def download_live_chat(video_id, workdir):
     """
     url = f"https://www.youtube.com/watch?v={video_id}"
     cmd = [
-        "yt-dlp", "--skip-download", "--write-subs",
+        "yt-dlp", "--skip-download", "--ignore-no-formats-error", "--write-subs",
         "--sub-langs", "live_chat", "--sub-format", "json",
         *YT_DLP_JS_RUNTIME_ARGS, *YT_DLP_CLIENT_ARGS, *_yt_dlp_proxy_args(), *_yt_dlp_auth_args(),
         "-o", os.path.join(workdir, "%(id)s.%(ext)s"), url,
     ]
-    subprocess.run(cmd, check=True)
+    # check=False, not check=True: --ignore-no-formats-error means yt-dlp can
+    # still exit nonzero even when the subtitle track downloaded fine (e.g.
+    # a video with no playable video/audio format at all, live chat replay
+    # only). Whether the expected output file actually landed on disk is the
+    # real signal of success, not the exit code.
+    result = subprocess.run(cmd, check=False)
     path = os.path.join(workdir, f"{video_id}.live_chat.json")
     if not os.path.exists(path):
-        raise SystemExit(f"yt-dlp did not produce {path}")
+        raise SystemExit(f"yt-dlp did not produce {path} (exit code {result.returncode})")
     return path
 
 
@@ -414,16 +419,22 @@ def download_auto_captions(video_id, workdir):
     """
     url = f"https://www.youtube.com/watch?v={video_id}"
     cmd = [
-        "yt-dlp", "--skip-download", "--write-auto-subs",
+        "yt-dlp", "--skip-download", "--ignore-no-formats-error", "--write-auto-subs",
         "--sub-langs", "en", "--sub-format", "json3",
         *YT_DLP_JS_RUNTIME_ARGS, *YT_DLP_CLIENT_ARGS, *_yt_dlp_proxy_args(), *_yt_dlp_auth_args(),
         "-o", os.path.join(workdir, "%(id)s.%(ext)s"), url,
     ]
-    subprocess.run(cmd, check=True)
+    # check=False, not check=True: --ignore-no-formats-error means yt-dlp can
+    # still exit nonzero even when the caption track downloaded fine (e.g. a
+    # video yt-dlp has no playable video/audio format for at all). Whether
+    # the expected output file actually landed on disk is the real signal of
+    # success, not the exit code.
+    result = subprocess.run(cmd, check=False)
     path = os.path.join(workdir, f"{video_id}.en.json3")
     if not os.path.exists(path):
         raise SystemExit(f"yt-dlp did not produce auto-caption file {path} "
-                          f"(the video may not have auto-captions available)")
+                          f"(exit code {result.returncode}) - the video may not have "
+                          f"auto-captions available")
     return path
 
 
