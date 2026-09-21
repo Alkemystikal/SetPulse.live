@@ -41,9 +41,11 @@ Usage:
 """
 
 import argparse
+import bisect
 import csv
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.parse
@@ -154,7 +156,8 @@ def find_latest_completed_video(channel_id, api_key):
 
 def get_video_details(video_id, api_key):
     q = urllib.parse.urlencode({
-        "key": api_key, "id": video_id, "part": "liveStreamingDetails,snippet",
+        "key": api_key, "id": video_id,
+        "part": "liveStreamingDetails,snippet,contentDetails",
     })
     with urllib.request.urlopen(f"{YOUTUBE_API}/videos?{q}") as r:
         data = json.load(r)
@@ -169,7 +172,19 @@ def get_video_details(video_id, api_key):
         "actualStartTime": live.get("actualStartTime"),
         "actualEndTime": live.get("actualEndTime"),
         "liveBroadcastContent": item["snippet"].get("liveBroadcastContent", "none"),
+        "duration_seconds": parse_iso8601_duration(item.get("contentDetails", {}).get("duration")),
     }
+
+
+def parse_iso8601_duration(duration):
+    """'PT1H2M3S' -> 3723. Returns None if duration is missing/unparseable."""
+    if not duration:
+        return None
+    m = re.match(r"^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$", duration)
+    if not m:
+        return None
+    h, mi, s = (int(x) if x else 0 for x in m.groups())
+    return h * 3600 + mi * 60 + s
 
 
 # --------------------------------------------------------------------------
@@ -231,6 +246,170 @@ def parse_live_chat(path):
 
 
 # --------------------------------------------------------------------------
+# Step 2b: caption-cue fallback - for shows with no archive_windows data
+# (older shows, or any night the archive step didn't happen to capture
+# clean on/off-stage timestamps). Detects Chino's spoken introduction cue
+# ("our next comic is ___, give it up for ___") from YouTube's own
+# auto-generated captions and uses each cue as a window boundary. Closer
+# callbacks ("once again / one more time, give it up for ___") are
+# recognized and skipped, so they don't get mistaken for a new comic.
+#
+# This is a best-effort fallback, not a replacement for real Sheet data:
+# auto-captions are reliable at flagging THAT a transition happened, much
+# less reliable at spelling a comic's actual stage name correctly. Treat
+# the detected names as a starting guess a human should skim, not ground
+# truth to publish blindly.
+# --------------------------------------------------------------------------
+# Unambiguous "this is a NEW comic" phrases - always trusted as a
+# transition on their own.
+TRANSITION_PATTERNS = [
+    re.compile(r"please welcome\s+([a-z][a-z' -]{1,24})", re.I),
+    re.compile(r"our next comic is\s+([a-z][a-z' -]{1,24})", re.I),
+    re.compile(r"next up (?:we have|is)\s+([a-z][a-z' -]{1,24})", re.I),
+]
+# "give it up for ___" is ambiguous on its own - it's used both for a
+# genuine new introduction (right after "our next comic is ___") AND for a
+# closer's callback to someone who already went ("once again/one more
+# time, give it up for ___"). Chino's actual callback phrasing always
+# leads with one of these - if the ~40 characters right before the match
+# contain one, it's a repeat mention, not a new comic, and gets skipped.
+GIVE_IT_UP_PATTERN = re.compile(r"give it up for\s+([a-z][a-z' -]{1,24})", re.I)
+CALLBACK_LEAD_IN = re.compile(r"(?:once again|one more time|again)\W*$", re.I)
+# Cues within this many seconds of each other collapse into one - repeated
+# or split captions ("give it up for... give it up for Dove!") shouldn't
+# create a second, spurious comic boundary.
+CUE_DEDUPE_SECONDS = 45
+# A stray "give it up for" mid-set (a callback bit, a crowd shoutout) is
+# common - stop candidate name at the next few filler/stop words so a
+# runaway match doesn't eat the rest of the sentence.
+NAME_STOPWORDS = {"everybody", "everyone", "guys", "tonight", "coming",
+                   "the", "next", "our", "on", "stage", "please", "up",
+                   "for", "to", "come", "and", "give", "it", "one"}
+
+
+def download_auto_captions(video_id, workdir):
+    """
+    Pulls YouTube's auto-generated English captions (speech-to-text, with
+    timestamps) via yt-dlp - a separate track from the live chat replay.
+    """
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    cmd = [
+        "yt-dlp", "--skip-download", "--write-auto-subs",
+        "--sub-langs", "en", "--sub-format", "json3",
+        "-o", os.path.join(workdir, "%(id)s.%(ext)s"), url,
+    ]
+    subprocess.run(cmd, check=True)
+    path = os.path.join(workdir, f"{video_id}.en.json3")
+    if not os.path.exists(path):
+        raise SystemExit(f"yt-dlp did not produce auto-caption file {path} "
+                          f"(the video may not have auto-captions available)")
+    return path
+
+
+def parse_caption_events(path):
+    """[(start_seconds, text), ...] from a yt-dlp json3 caption file."""
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    out = []
+    for ev in data.get("events", []):
+        start_ms = ev.get("tStartMs")
+        segs = ev.get("segs") or []
+        text = "".join(s.get("utf8", "") for s in segs)
+        if start_ms is None or not text.strip():
+            continue
+        out.append((start_ms / 1000.0, text))
+    return out
+
+
+def _clean_name(raw):
+    """Trim a regex-captured name down to just the plausible name tokens."""
+    words = raw.strip().split()
+    kept = []
+    for w in words:
+        bare = w.strip(".,!?:;\"'").lower()
+        if bare in NAME_STOPWORDS or not bare:
+            break
+        kept.append(w.strip(".,!?:;\"'"))
+        if len(kept) >= 3:  # names are short - stop runaway matches
+            break
+    return " ".join(kept).strip() or "unknown"
+
+
+def find_cue_transitions(events):
+    """
+    events: [(start_seconds, text), ...] from parse_caption_events.
+    Returns a de-duplicated, time-sorted list of
+    {"offset_seconds", "name", "raw_context"} - one per detected comic
+    introduction.
+    """
+    # Build one long lowercase transcript plus a parallel char-offset ->
+    # timestamp index, so a regex match anywhere (even split across two
+    # caption events) can still be traced back to a real timestamp.
+    full_text_parts = []
+    offsets = []  # char offset at the START of each event's text
+    cursor = 0
+    for start_sec, text in events:
+        offsets.append((cursor, start_sec))
+        full_text_parts.append(text)
+        cursor += len(text) + 1  # +1 for the joining space below
+    full_text = " ".join(full_text_parts)
+    offset_positions = [o for o, _ in offsets]
+    offset_times = [t for _, t in offsets]
+
+    def time_at(char_pos):
+        i = bisect.bisect_right(offset_positions, char_pos) - 1
+        i = max(0, min(i, len(offset_times) - 1))
+        return offset_times[i]
+
+    raw_hits = []
+    for pattern in TRANSITION_PATTERNS:
+        for m in pattern.finditer(full_text):
+            ts = time_at(m.start())
+            name = _clean_name(m.group(1))
+            context = full_text[max(0, m.start() - 20): m.end() + 20]
+            raw_hits.append({"offset_seconds": ts, "name": name, "raw_context": context})
+
+    for m in GIVE_IT_UP_PATTERN.finditer(full_text):
+        lead_in = full_text[max(0, m.start() - 40): m.start()]
+        if CALLBACK_LEAD_IN.search(lead_in):
+            continue  # "once again / one more time, give it up for ___" - a repeat mention, not a new comic
+        ts = time_at(m.start())
+        name = _clean_name(m.group(1))
+        context = full_text[max(0, m.start() - 20): m.end() + 20]
+        raw_hits.append({"offset_seconds": ts, "name": name, "raw_context": context})
+
+    raw_hits.sort(key=lambda h: h["offset_seconds"])
+    deduped = []
+    for hit in raw_hits:
+        if deduped and hit["offset_seconds"] - deduped[-1]["offset_seconds"] < CUE_DEDUPE_SECONDS:
+            continue
+        deduped.append(hit)
+    return deduped
+
+
+def build_windows_from_cues(cue_transitions, video_duration_seconds, stream_start_iso):
+    """
+    Turns a list of detected cue transitions into archive_windows-shaped
+    {name, on_stage_at, done_at} entries, so they can flow through the
+    exact same build_report() pipeline as real Sheet data. Each comic's
+    window runs from their own cue to the next cue (or to the end of the
+    video for the last one).
+    """
+    stream_start = datetime.fromisoformat(stream_start_iso.replace("Z", "+00:00"))
+    windows = []
+    for i, cue in enumerate(cue_transitions):
+        start = cue["offset_seconds"]
+        end = cue_transitions[i + 1]["offset_seconds"] if i + 1 < len(cue_transitions) \
+            else (video_duration_seconds if video_duration_seconds else start + 600)
+        windows.append({
+            "name": f"{cue['name']} (auto-detected, please verify)",
+            "on_stage_at": (stream_start + timedelta(seconds=start)).isoformat(),
+            "done_at": (stream_start + timedelta(seconds=end)).isoformat(),
+        })
+    return windows
+
+
+# --------------------------------------------------------------------------
 # Step 3: real performer windows
 # --------------------------------------------------------------------------
 def fetch_archive_windows(archive_base, date_str):
@@ -261,7 +440,7 @@ def fetch_archive_windows_with_lag_search(archive_base, date_str, lookahead_days
 # --------------------------------------------------------------------------
 # Step 4/5: bucket + score
 # --------------------------------------------------------------------------
-def build_report(chat_messages, windows, stream_start_iso):
+def build_report(chat_messages, windows, stream_start_iso, window_source="sheet_archive"):
     """
     chat_messages: [{offset_seconds, author, message}] - offsets relative
         to stream start.
@@ -306,7 +485,8 @@ def build_report(chat_messages, windows, stream_start_iso):
         else:
             bucket["neutral"] += 1
 
-    stats = {"generated_at": datetime.now(timezone.utc).isoformat(), "comics": {}}
+    stats = {"generated_at": datetime.now(timezone.utc).isoformat(),
+              "window_source": window_source, "comics": {}}
     for name, b in per_comic.items():
         avg = round(b["sentiment_sum"] / b["messages"], 4) if b["messages"] else 0.0
         stats["comics"][name] = {
@@ -377,11 +557,14 @@ def main():
     workdir = os.path.join(args.out, "_work")
     os.makedirs(workdir, exist_ok=True)
 
+    video_duration_seconds = None
+
     if args.auto:
         if not args.channel_id or not args.youtube_api_key:
             raise SystemExit("--auto requires --channel-id and --youtube-api-key")
         video_id, details = find_latest_completed_video(args.channel_id, args.youtube_api_key)
         stream_start_iso = details["actualStartTime"]
+        video_duration_seconds = details.get("duration_seconds")
         show_date = args.date or stream_start_iso[:10]
         print(f"Auto-detected video {video_id}: {details['title']} ({stream_start_iso})")
     else:
@@ -390,7 +573,11 @@ def main():
         video_id = args.video_id
         if args.youtube_api_key:
             details = get_video_details(video_id, args.youtube_api_key)
+            if not details:
+                raise SystemExit(f"YouTube API returned no video for id {video_id!r} - "
+                                  f"double check it's just the ID, not a full URL.")
             stream_start_iso = details["actualStartTime"]
+            video_duration_seconds = details.get("duration_seconds")
         elif args.date:
             # No API key available - assume the stream started at local
             # midnight of --date; this only matters for lining chat offsets
@@ -404,15 +591,33 @@ def main():
         raise SystemExit("--archive-base is required (the SetPulse Apps Script /exec URL)")
 
     resolved_date, windows = fetch_archive_windows_with_lag_search(args.archive_base, show_date)
-    if not windows:
-        raise SystemExit(f"No archive_windows found for {show_date} (or the next few days after it).")
-    print(f"Using archive_windows for {resolved_date}: {len(windows)} performer(s)")
+    window_source = "sheet_archive"
+    if windows:
+        print(f"Using archive_windows for {resolved_date}: {len(windows)} performer(s)")
+    else:
+        # Nothing was ever formally archived for this show (Finish Show may
+        # never have been pressed, or this predates that data existing) -
+        # fall back to detecting Chino's spoken cue from auto-captions.
+        print(f"No archive_windows for {show_date} - falling back to auto-caption cue detection")
+        caption_path = download_auto_captions(video_id, workdir)
+        caption_events = parse_caption_events(caption_path)
+        cue_transitions = find_cue_transitions(caption_events)
+        if not cue_transitions:
+            raise SystemExit(f"No archive_windows found for {show_date}, and no comic-introduction "
+                              f"cues were detected in the auto-captions either. Nothing to build a "
+                              f"per-comic report from.")
+        windows = build_windows_from_cues(cue_transitions, video_duration_seconds, stream_start_iso)
+        window_source = "caption_cue_auto_detected"
+        print(f"Detected {len(windows)} comic transition(s) from auto-captions - "
+              f"names are best-effort guesses, review before treating as final:")
+        for w in windows:
+            print(f"  - {w['name']}: {w['on_stage_at']} -> {w['done_at']}")
 
     chat_path = download_live_chat(video_id, workdir)
     chat_messages = parse_live_chat(chat_path)
     print(f"Parsed {len(chat_messages)} chat messages")
 
-    rows, stats = build_report(chat_messages, windows, stream_start_iso)
+    rows, stats = build_report(chat_messages, windows, stream_start_iso, window_source=window_source)
     csv_path, json_path = write_outputs(rows, stats, args.out)
     print(f"Wrote {csv_path}")
     print(f"Wrote {json_path}")
