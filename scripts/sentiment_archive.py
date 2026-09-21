@@ -5,7 +5,7 @@ SetPulse sentiment archiving pipeline.
 Meant to run unattended on a schedule (GitHub Actions), with no manual
 terminal step from the producer. For a given show, it:
 
-  1. Finds the video (auto-detects the latest completed livestream on the
+  1. Finds the video (selects the latest completed livestream on the
      channel, or takes an explicit --video-id for testing/backfill).
   2. Downloads the live chat replay via yt-dlp.
   3. Fetches real performer on/off-stage windows from the SetPulse Apps
@@ -217,7 +217,14 @@ def score_sentiment(text):
 # Step 1: find the video
 # --------------------------------------------------------------------------
 def find_latest_completed_video(channel_id, api_key):
-    """Latest completed (not live, not upcoming) video on the channel."""
+    """
+    Latest livestream on the channel that has actually started - either
+    still running ("live") or finished ("none" broadcast status) - never
+    one that's merely scheduled/upcoming. Chat pulled from a still-running
+    stream will only cover whatever's happened up to the moment this runs,
+    since yt-dlp's clean "grab the whole replay" behavior only applies once
+    a stream has ended.
+    """
     q = urllib.parse.urlencode({
         "key": api_key, "channelId": channel_id, "part": "snippet",
         "order": "date", "type": "video", "maxResults": 10,
@@ -227,10 +234,10 @@ def find_latest_completed_video(channel_id, api_key):
     for item in data.get("items", []):
         vid = item["id"]["videoId"]
         details = get_video_details(vid, api_key)
-        if details and details.get("liveBroadcastContent") == "none" \
+        if details and details.get("liveBroadcastContent") in ("none", "live") \
                 and details.get("actualStartTime"):
             return vid, details
-    raise SystemExit("No completed livestream found in the last 10 uploads.")
+    raise SystemExit("No started livestream (running or completed) found in the last 10 uploads.")
 
 
 def get_video_details(video_id, api_key):
@@ -250,6 +257,7 @@ def get_video_details(video_id, api_key):
         "publishedAt": item["snippet"]["publishedAt"],
         "actualStartTime": live.get("actualStartTime"),
         "actualEndTime": live.get("actualEndTime"),
+        "activeLiveChatId": live.get("activeLiveChatId"),
         "liveBroadcastContent": item["snippet"].get("liveBroadcastContent", "none"),
         "duration_seconds": parse_iso8601_duration(item.get("contentDetails", {}).get("duration")),
     }
@@ -355,6 +363,11 @@ TRANSITION_PATTERNS = [
 # contain one, it's a repeat mention, not a new comic, and gets skipped.
 GIVE_IT_UP_PATTERN = re.compile(r"give it up for\s+([a-z][a-z' -]{1,24})", re.I)
 CALLBACK_LEAD_IN = re.compile(r"(?:once again|one more time|again)\W*$", re.I)
+# Chino's spoken cue that kicks off the actual show, as opposed to any
+# pre-show waiting-room banter beforehand. Used as a fallback show-start
+# marker (see find_show_start_offset) when YouTube's API doesn't report a
+# live-stream start time for a video.
+BEGIN_SIMULATION_PATTERN = re.compile(r"begin simulation", re.I)
 # Cues within this many seconds of each other collapse into one - repeated
 # or split captions ("give it up for... give it up for Dove!") shouldn't
 # create a second, spurious comic boundary.
@@ -466,6 +479,24 @@ def find_cue_transitions(events):
             continue
         deduped.append(hit)
     return deduped
+
+
+def find_show_start_offset(events):
+    """
+    Returns the offset (seconds into the video) of the first "begin
+    simulation" cue, or None if it's never said. events is the same
+    [(start_seconds, text), ...] shape parse_caption_events returns.
+    Checks each caption event individually, and adjacent pairs joined
+    together, since the phrase can land split across two caption chunks.
+    """
+    for start_sec, text in events:
+        if BEGIN_SIMULATION_PATTERN.search(text):
+            return start_sec
+    for i in range(len(events) - 1):
+        joined = events[i][1] + " " + events[i + 1][1]
+        if BEGIN_SIMULATION_PATTERN.search(joined):
+            return events[i][0]
+    return None
 
 
 def build_windows_from_cues(cue_transitions, video_duration_seconds, stream_start_iso):
@@ -584,6 +615,254 @@ def build_report(chat_messages, windows, stream_start_iso, window_source="sheet_
     return rows, stats
 
 
+# --------------------------------------------------------------------------
+# Live polling - a lighter-weight companion to the main --auto/--video-id
+# path above, meant to run every ~5 minutes (via its own scheduled workflow)
+# while a show is still in progress, so a site can show sentiment updating
+# during the night instead of only after it ends.
+#
+# Comic-level windows (build_report, above) need archive_windows, which the
+# Sheet only has once the show has finished and Finish Show has been
+# pressed - not available while still live. So this buckets by 5-minute
+# wall-clock chunks instead of by comic; the regular post-show run is still
+# what produces the definitive per-comic report once the show ends.
+#
+# Getting chat WHILE a stream is live is also a different mechanism than
+# the finished-replay download above (that trick only works once a stream
+# has ended) - this uses YouTube's liveChatMessages API instead of yt-dlp.
+# Checking "is anything live right now" cheaply matters too: a full search
+# query costs 100 quota units, which would blow the daily 10,000-unit quota
+# if run every 5 minutes all day. Looking at the channel's single latest
+# upload's status instead costs about 2-3 units, so polling all day is fine.
+# --------------------------------------------------------------------------
+LIVE_STATE_FILENAME = "live_poll_state.json"
+
+
+def get_uploads_playlist_id(channel_id, api_key):
+    """1 quota unit. The channel's "uploads" playlist ID barely ever
+    changes, so callers should cache and reuse this across polls."""
+    q = urllib.parse.urlencode({"key": api_key, "id": channel_id, "part": "contentDetails"})
+    with urllib.request.urlopen(f"{YOUTUBE_API}/channels?{q}") as r:
+        data = json.load(r)
+    items = data.get("items", [])
+    if not items:
+        return None
+    return items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
+
+
+def get_latest_upload_video_id(playlist_id, api_key):
+    """1 quota unit."""
+    q = urllib.parse.urlencode({
+        "key": api_key, "playlistId": playlist_id, "part": "contentDetails", "maxResults": 1,
+    })
+    with urllib.request.urlopen(f"{YOUTUBE_API}/playlistItems?{q}") as r:
+        data = json.load(r)
+    items = data.get("items", [])
+    if not items:
+        return None
+    return items[0]["contentDetails"]["videoId"]
+
+
+def get_live_stream_status(video_id, api_key):
+    """1 quota unit - just enough to tell if this one video is live right
+    now and, if so, its chat ID."""
+    q = urllib.parse.urlencode({
+        "key": api_key, "id": video_id, "part": "liveStreamingDetails,snippet",
+    })
+    with urllib.request.urlopen(f"{YOUTUBE_API}/videos?{q}") as r:
+        data = json.load(r)
+    items = data.get("items", [])
+    if not items:
+        return None
+    item = items[0]
+    live = item.get("liveStreamingDetails", {})
+    return {
+        "title": item["snippet"]["title"],
+        "liveBroadcastContent": item["snippet"].get("liveBroadcastContent", "none"),
+        "activeLiveChatId": live.get("activeLiveChatId"),
+    }
+
+
+def find_currently_live_video(channel_id, api_key, cached_playlist_id=None):
+    """
+    Cheap way (~2-3 quota units total, vs 100 for a search query) to check
+    whether the channel currently has a live broadcast: look at its single
+    most recent upload and check its live status directly, rather than
+    searching. Returns (video_id, status_dict, uploads_playlist_id) when
+    something's live, or (None, None, uploads_playlist_id) when not -
+    callers should cache and pass back uploads_playlist_id to skip the
+    lookup on the next poll.
+    """
+    playlist_id = cached_playlist_id or get_uploads_playlist_id(channel_id, api_key)
+    if not playlist_id:
+        return None, None, playlist_id
+    video_id = get_latest_upload_video_id(playlist_id, api_key)
+    if not video_id:
+        return None, None, playlist_id
+    status = get_live_stream_status(video_id, api_key)
+    if status and status.get("liveBroadcastContent") == "live" and status.get("activeLiveChatId"):
+        return video_id, status, playlist_id
+    return None, None, playlist_id
+
+
+def load_live_state(path):
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def save_live_state(path, state):
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+
+
+def poll_live_chat_once(live_chat_id, api_key, page_token=None):
+    """One page of new live chat messages since page_token (None = start
+    from whatever's currently in the chat, not the whole history)."""
+    params = {"key": api_key, "liveChatId": live_chat_id, "part": "snippet,authorDetails"}
+    if page_token:
+        params["pageToken"] = page_token
+    q = urllib.parse.urlencode(params)
+    with urllib.request.urlopen(f"{YOUTUBE_API}/liveChat/messages?{q}") as r:
+        return json.load(r)
+
+
+def append_live_messages(rows_path, items):
+    """Scores and appends new live-chat items to a running CSV."""
+    if not items:
+        return
+    file_exists = os.path.exists(rows_path)
+    os.makedirs(os.path.dirname(rows_path) or ".", exist_ok=True)
+    with open(rows_path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["timestamp_utc", "author", "message", "sentiment"])
+        if not file_exists:
+            writer.writeheader()
+        for item in items:
+            snippet = item.get("snippet", {})
+            text = snippet.get("displayMessage", "")
+            published = snippet.get("publishedAt", "")
+            author = item.get("authorDetails", {}).get("displayName", "")
+            writer.writerow({
+                "timestamp_utc": published,
+                "author": author,
+                "message": text,
+                "sentiment": score_sentiment(text),
+            })
+
+
+def update_live_stats(rows_path, stats_path, video_id):
+    """
+    Rebuilds a rolling stats file from the running CSV, bucketed into
+    5-minute wall-clock chunks (comic windows aren't known yet for a show
+    that's still live - see the module docstring above).
+    """
+    buckets = {}
+    total_messages = 0
+    sentiment_sum = 0.0
+    if os.path.exists(rows_path):
+        with open(rows_path, "r", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                ts = row.get("timestamp_utc", "")
+                try:
+                    score = float(row.get("sentiment") or 0.0)
+                except ValueError:
+                    score = 0.0
+                total_messages += 1
+                sentiment_sum += score
+                if ts:
+                    try:
+                        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                        bucket_key = dt.replace(minute=(dt.minute // 5) * 5, second=0,
+                                                 microsecond=0).isoformat()
+                    except ValueError:
+                        bucket_key = "unknown"
+                else:
+                    bucket_key = "unknown"
+                b = buckets.setdefault(bucket_key, {"messages": 0, "sentiment_sum": 0.0})
+                b["messages"] += 1
+                b["sentiment_sum"] += score
+
+    bucket_stats = {}
+    for key, b in sorted(buckets.items()):
+        bucket_stats[key] = {
+            "messages": b["messages"],
+            "avg_sentiment": round(b["sentiment_sum"] / b["messages"], 4) if b["messages"] else 0.0,
+        }
+
+    stats = {
+        "video_id": video_id,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "window_source": "live_poll_5min_buckets",
+        "totals": {
+            "messages": total_messages,
+            "avg_sentiment": round(sentiment_sum / total_messages, 4) if total_messages else 0.0,
+        },
+        "buckets": bucket_stats,
+    }
+    os.makedirs(os.path.dirname(stats_path) or ".", exist_ok=True)
+    with open(stats_path, "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2)
+
+
+def run_live_poll(channel_id, api_key, out_dir):
+    """
+    One shot, meant to be called every ~5 minutes by a scheduled workflow.
+    Fast no-op when nothing's currently live. When a show is live, pulls
+    whatever new chat has arrived since the last poll and updates that
+    show's rolling chat.csv/stats.json under out_dir.
+    """
+    state_path = os.path.join(out_dir, LIVE_STATE_FILENAME)
+    state = load_live_state(state_path)
+
+    video_id = state.get("video_id")
+    live_chat_id = state.get("live_chat_id")
+    playlist_id = state.get("uploads_playlist_id")
+    still_tracking = False
+
+    if video_id and live_chat_id:
+        status = get_live_stream_status(video_id, api_key)
+        if status and status.get("liveBroadcastContent") == "live" and status.get("activeLiveChatId"):
+            live_chat_id = status["activeLiveChatId"]
+            still_tracking = True
+        else:
+            print(f"Show {video_id} is no longer live - doing a final poll, then clearing state.")
+    else:
+        new_video_id, status, playlist_id = find_currently_live_video(channel_id, api_key, playlist_id)
+        state["uploads_playlist_id"] = playlist_id
+        if not new_video_id:
+            print("No show currently live - nothing to poll.")
+            save_live_state(state_path, state)
+            return
+        video_id = new_video_id
+        live_chat_id = status["activeLiveChatId"]
+        state.update({
+            "video_id": video_id, "live_chat_id": live_chat_id, "next_page_token": None,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+        })
+        still_tracking = True
+        print(f"New live show detected: {video_id} ({status.get('title')}) - starting live poll.")
+
+    data = poll_live_chat_once(live_chat_id, api_key, state.get("next_page_token"))
+    items = data.get("items", [])
+    rows_path = os.path.join(out_dir, f"{video_id}.chat.csv")
+    stats_path = os.path.join(out_dir, f"{video_id}.stats.json")
+    append_live_messages(rows_path, items)
+    update_live_stats(rows_path, stats_path, video_id)
+    print(f"Polled {len(items)} new message(s) for {video_id}.")
+
+    state["next_page_token"] = data.get("nextPageToken", state.get("next_page_token"))
+    if not still_tracking:
+        state.pop("video_id", None)
+        state.pop("live_chat_id", None)
+        state.pop("next_page_token", None)
+        print(f"Show {video_id} ended - the regular post-show pipeline run still produces the "
+              f"definitive per-comic report once its data lands in the Sheet.")
+
+    save_live_state(state_path, state)
+
+
 def write_outputs(rows, stats, out_dir):
     os.makedirs(out_dir, exist_ok=True)
     csv_path = os.path.join(out_dir, "chat.csv")
@@ -656,6 +935,9 @@ def main():
     ap.add_argument("--youtube-api-key", default=os.environ.get("YOUTUBE_API_KEY", ""))
     ap.add_argument("--out", default="./out")
     ap.add_argument("--demo", action="store_true", help="Run entirely on bundled sample fixtures, no network/yt-dlp")
+    ap.add_argument("--live-poll", action="store_true",
+                     help="One-shot live chat poll (meant to run every ~5 min via its own schedule) - "
+                          "fast no-op if nothing's currently live")
     args = ap.parse_args()
 
     # Clean up manually-typed/pasted inputs before they hit anything else -
@@ -665,6 +947,12 @@ def main():
     args.date = sanitize_date(args.date) if args.date else args.date
     args.archive_base = sanitize_url(args.archive_base) if args.archive_base else args.archive_base
     args.channel_id = args.channel_id.strip() if args.channel_id else args.channel_id
+
+    if args.live_poll:
+        if not args.channel_id or not args.youtube_api_key:
+            raise SystemExit("--live-poll requires --channel-id and --youtube-api-key")
+        run_live_poll(args.channel_id, args.youtube_api_key, args.out)
+        return
 
     if args.demo:
         fixtures_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
@@ -681,6 +969,12 @@ def main():
     os.makedirs(workdir, exist_ok=True)
 
     video_duration_seconds = None
+    # True once stream_start_iso comes straight from YouTube's own
+    # liveStreamingDetails.actualStartTime - an exact, trustworthy anchor.
+    # False for any of the approximate fallbacks below, which get refined
+    # against the "begin simulation" caption cue a bit further down.
+    stream_start_precise = True
+    details = None
 
     if args.auto:
         if not args.channel_id or not args.youtube_api_key:
@@ -689,7 +983,11 @@ def main():
         stream_start_iso = details["actualStartTime"]
         video_duration_seconds = details.get("duration_seconds")
         show_date = args.date or stream_start_iso[:10]
-        print(f"Auto-detected video {video_id}: {details['title']} ({stream_start_iso})")
+        status = "still running" if details.get("liveBroadcastContent") == "live" else "completed"
+        print(f"Selected video {video_id} ({status}): {details['title']} ({stream_start_iso})")
+        if status == "still running":
+            print("Note: this show hasn't ended yet - chat will only cover what's happened so far, "
+                  "and archive_windows likely has no data yet either.")
     else:
         if not args.video_id:
             raise SystemExit("Provide --video-id, or use --auto, or use --demo")
@@ -699,16 +997,57 @@ def main():
             if not details:
                 raise SystemExit(f"YouTube API returned no video for id {video_id!r} - "
                                   f"double check it's just the ID, not a full URL.")
-            stream_start_iso = details["actualStartTime"]
+            # A video can come back from the API with no actualStartTime -
+            # it's not a completed livestream (a regular upload, or one
+            # that's upcoming/still live). Fall back to --date if given,
+            # then to when it was published, rather than crashing.
+            stream_start_iso = details.get("actualStartTime")
+            if not stream_start_iso:
+                stream_start_precise = False
+                if args.date:
+                    stream_start_iso = args.date + "T00:00:00Z"
+                elif details.get("publishedAt"):
+                    print(f"Video {video_id} has no live-stream start time "
+                          f"(not a completed livestream?) - using its publish "
+                          f"date instead. Pass --date explicitly if that's wrong.")
+                    stream_start_iso = details["publishedAt"]
+                else:
+                    raise SystemExit(f"Video {video_id} has no live-stream start time and "
+                                      f"no publish date either - pass --date explicitly.")
             video_duration_seconds = details.get("duration_seconds")
         elif args.date:
             # No API key available - assume the stream started at local
             # midnight of --date; this only matters for lining chat offsets
             # up with archive_windows, so pass --youtube-api-key when possible.
+            stream_start_precise = False
             stream_start_iso = args.date + "T00:00:00Z"
         else:
             raise SystemExit("Provide --date or --youtube-api-key so the stream start time is known")
         show_date = args.date or stream_start_iso[:10]
+
+    if not stream_start_precise:
+        # The anchor above (--date at midnight, or a publish date) is only
+        # a rough guess at when the video actually starts. Chino's spoken
+        # "begin simulation" cue marks the real show start precisely - if
+        # auto-captions catch it, use that offset from a real timestamp
+        # anchor (the video's publish time, when available) instead of the
+        # rough guess.
+        anchor_iso = (details.get("publishedAt") if details else None) or stream_start_iso
+        try:
+            caption_path = download_auto_captions(video_id, workdir)
+            caption_events = parse_caption_events(caption_path)
+            start_offset = find_show_start_offset(caption_events)
+        except SystemExit:
+            start_offset = None
+        if start_offset is not None:
+            anchor_dt = datetime.fromisoformat(anchor_iso.replace("Z", "+00:00"))
+            stream_start_iso = (anchor_dt + timedelta(seconds=start_offset)).isoformat()
+            show_date = args.date or stream_start_iso[:10]
+            print(f"Detected the 'begin simulation' cue at {start_offset:.0f}s into the video - "
+                  f"using that as the precise show start ({stream_start_iso}).")
+        else:
+            print("Didn't detect a 'begin simulation' cue in the auto-captions - "
+                  "keeping the approximate show start time from above.")
 
     if not args.archive_base:
         raise SystemExit("--archive-base is required (the SetPulse Apps Script /exec URL)")
@@ -749,4 +1088,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
