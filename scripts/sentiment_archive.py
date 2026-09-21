@@ -87,6 +87,16 @@ YT_DLP_CLIENT_ARGS = ["--extractor-args", "youtube:player_client=web"]
 # accepts either shape and converts JSON to Netscape format automatically.
 YT_DLP_COOKIES_FILE = os.environ.get("YT_DLP_COOKIES_FILE", "")
 
+# Cookies alone haven't been reliably enough - YouTube's bot check also
+# weighs the requesting IP, and GitHub Actions runners share a small pool of
+# well-known datacenter IPs that are common bot-check targets regardless of
+# how valid the cookies are. Routing the yt-dlp request through a residential
+# proxy (an ordinary home-internet IP, rented from a proxy provider) instead
+# of the runner's own IP addresses that specific problem. Optional: if
+# YT_DLP_PROXY isn't set, yt-dlp just uses the runner's IP directly as
+# before, so this has no effect until that secret exists.
+YT_DLP_PROXY = os.environ.get("YT_DLP_PROXY", "")
+
 
 def _normalize_cookies_file(raw_path):
     """
@@ -136,6 +146,12 @@ def _normalize_cookies_file(raw_path):
     with open(normalized_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     return normalized_path
+
+
+def _yt_dlp_proxy_args():
+    if YT_DLP_PROXY:
+        return ["--proxy", YT_DLP_PROXY]
+    return []
 
 
 def _yt_dlp_auth_args():
@@ -298,7 +314,7 @@ def download_live_chat(video_id, workdir):
     cmd = [
         "yt-dlp", "--skip-download", "--write-subs",
         "--sub-langs", "live_chat", "--sub-format", "json",
-        *YT_DLP_JS_RUNTIME_ARGS, *YT_DLP_CLIENT_ARGS, *_yt_dlp_auth_args(),
+        *YT_DLP_JS_RUNTIME_ARGS, *YT_DLP_CLIENT_ARGS, *_yt_dlp_proxy_args(), *_yt_dlp_auth_args(),
         "-o", os.path.join(workdir, "%(id)s.%(ext)s"), url,
     ]
     subprocess.run(cmd, check=True)
@@ -400,7 +416,7 @@ def download_auto_captions(video_id, workdir):
     cmd = [
         "yt-dlp", "--skip-download", "--write-auto-subs",
         "--sub-langs", "en", "--sub-format", "json3",
-        *YT_DLP_JS_RUNTIME_ARGS, *YT_DLP_CLIENT_ARGS, *_yt_dlp_auth_args(),
+        *YT_DLP_JS_RUNTIME_ARGS, *YT_DLP_CLIENT_ARGS, *_yt_dlp_proxy_args(), *_yt_dlp_auth_args(),
         "-o", os.path.join(workdir, "%(id)s.%(ext)s"), url,
     ]
     subprocess.run(cmd, check=True)
