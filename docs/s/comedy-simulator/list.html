@@ -39,9 +39,6 @@
   <p class="mut" style="color:#b8a9cc; font-size:.8rem;">Spots are subject to change and not guaranteed until you're called up.</p>
 
   <div class="card">
-    <label>Room code</label>
-    <input id="code" placeholder="4-digit code from the venue" inputmode="numeric" maxlength="4">
-
     <label>Stage name</label>
     <input id="name" placeholder="Name as you want it called" autocomplete="name">
 
@@ -70,7 +67,6 @@
 const DEFAULT_SHOW = "Comedy Simulator";
 const status = document.getElementById("status");
 const goBtn = document.getElementById("go");
-const codeField = document.getElementById("code");
 let pick = 0;
 function deviceId() {
   try {
@@ -88,20 +84,6 @@ function feedUrl() {
   const q = new URLSearchParams(location.search).get("feed");
   return q || localStorage.getItem("setpulse_webapp") || DEFAULT_FEED;
 }
-
-(function () {
-  try {
-    const params = new URLSearchParams(location.search);
-    const c = params.get("code");
-    if (c) codeField.value = c;
-    if (params.has("code")) {
-      params.delete("code");
-      const qs = params.toString();
-      const clean = location.pathname + (qs ? "?" + qs : "") + location.hash;
-      history.replaceState({}, "", clean);
-    }
-  } catch (e) {}
-})();
 
 (function () {
   const feed = feedUrl();
@@ -182,9 +164,7 @@ async function load() {
 document.getElementById("go").onclick = async () => {
   if (goBtn.disabled) return;
   const name = document.getElementById("name").value.trim();
-  const code = codeField.value.trim();
   if (!name) { status.textContent = "Need a name."; return; }
-  if (!code) { status.textContent = "Need the room code from the venue."; return; }
   if (!pick) { status.textContent = "Pick an open spot."; return; }
   const feed = feedUrl();
   status.textContent = "Sending...";
@@ -194,7 +174,6 @@ document.getElementById("go").onclick = async () => {
       action: "claim",
       name,
       order: pick,
-      code,
       chat_name: document.getElementById("chat").value.trim(),
       social: document.getElementById("social").value.trim(),
       note: document.getElementById("note").value.trim(),
