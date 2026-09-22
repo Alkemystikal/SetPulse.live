@@ -51,7 +51,7 @@
   <a class="back" href="list.html">&larr; Get on the list</a>
 
 <script>
-const DEFAULT_FEED = "https://script.google.com/macros/s/AKfycbwPKQnb9r7QngqV9iUO0adz9NPAvs-CgDfUEsv3WAKA8VyD59dm0eaIC-DSqqjYQbPp8A/exec";
+const DEFAULT_FEED = "https://script.google.com/macros/s/AKfycbzzak7TIvNwJDX_9Ea7S79RU_9jAXaOKdOvE2Uc1cz_AkEdCmvZpVjpkyzHi1RhEwYoEg/exec";
 function feedUrl() {
   const q = new URLSearchParams(location.search).get("feed");
   return q || localStorage.getItem("setpulse_webapp") || DEFAULT_FEED;
@@ -66,7 +66,7 @@ function jsonp(url, params) {
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      window[cbName] = () => {}; // absorb a late response instead of throwing
+      window[cbName] = () => {};
       script.remove();
       reject(new Error("timeout"));
     }, 12000);

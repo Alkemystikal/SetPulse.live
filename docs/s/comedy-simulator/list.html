@@ -72,6 +72,16 @@ const status = document.getElementById("status");
 const goBtn = document.getElementById("go");
 const codeField = document.getElementById("code");
 let pick = 0;
+function deviceId() {
+  try {
+    let id = localStorage.getItem("setpulse_device_id");
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + "-" + Math.random().toString(16).slice(2)));
+      localStorage.setItem("setpulse_device_id", id);
+    }
+    return id;
+  } catch (e) { return ""; }
+}
 
 const DEFAULT_FEED = "https://script.google.com/macros/s/AKfycbzzak7TIvNwJDX_9Ea7S79RU_9jAXaOKdOvE2Uc1cz_AkEdCmvZpVjpkyzHi1RhEwYoEg/exec";
 function feedUrl() {
@@ -79,8 +89,6 @@ function feedUrl() {
   return q || localStorage.getItem("setpulse_webapp") || DEFAULT_FEED;
 }
 
-// If the link/QR already carried the room code, fill it in and hide the
-// field entirely - the guest never has to see or type it.
 (function () {
   try {
     const c = new URLSearchParams(location.search).get("code");
@@ -108,7 +116,7 @@ function jsonp(url, params) {
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      window[cbName] = () => {}; // absorb a late response instead of throwing
+      window[cbName] = () => {};
       script.remove();
       reject(new Error("timeout"));
     }, 12000);
@@ -189,7 +197,8 @@ document.getElementById("go").onclick = async () => {
       note: document.getElementById("note").value.trim(),
       show: DEFAULT_SHOW,
       source: "list",
-      channel: "list_page"
+      channel: "list_page",
+      device_id: deviceId()
     });
     if (j.ok) {
       status.textContent = "You're #" + j.order + ".";
