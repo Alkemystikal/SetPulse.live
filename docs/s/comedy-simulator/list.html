@@ -91,11 +91,14 @@ function feedUrl() {
 
 (function () {
   try {
-    const c = new URLSearchParams(location.search).get("code");
-    if (c) {
-      codeField.value = c;
-      codeField.previousElementSibling.style.display = "none";
-      codeField.style.display = "none";
+    const params = new URLSearchParams(location.search);
+    const c = params.get("code");
+    if (c) codeField.value = c;
+    if (params.has("code")) {
+      params.delete("code");
+      const qs = params.toString();
+      const clean = location.pathname + (qs ? "?" + qs : "") + location.hash;
+      history.replaceState({}, "", clean);
     }
   } catch (e) {}
 })();
