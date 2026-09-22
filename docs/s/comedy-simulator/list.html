@@ -39,6 +39,9 @@
   <p class="mut" style="color:#b8a9cc; font-size:.8rem;">Spots are subject to change and not guaranteed until you're called up.</p>
 
   <div class="card">
+    <label>Room code</label>
+    <input id="code" placeholder="4-digit code from the venue" inputmode="numeric" maxlength="4">
+
     <label>Stage name</label>
     <input id="name" placeholder="Name as you want it called" autocomplete="name">
 
@@ -67,6 +70,7 @@
 const DEFAULT_SHOW = "Comedy Simulator";
 const status = document.getElementById("status");
 const goBtn = document.getElementById("go");
+const codeField = document.getElementById("code");
 let pick = 0;
 
 const DEFAULT_FEED = "https://script.google.com/macros/s/AKfycbzzak7TIvNwJDX_9Ea7S79RU_9jAXaOKdOvE2Uc1cz_AkEdCmvZpVjpkyzHi1RhEwYoEg/exec";
@@ -74,6 +78,19 @@ function feedUrl() {
   const q = new URLSearchParams(location.search).get("feed");
   return q || localStorage.getItem("setpulse_webapp") || DEFAULT_FEED;
 }
+
+// If the link/QR already carried the room code, fill it in and hide the
+// field entirely - the guest never has to see or type it.
+(function () {
+  try {
+    const c = new URLSearchParams(location.search).get("code");
+    if (c) {
+      codeField.value = c;
+      codeField.previousElementSibling.style.display = "none";
+      codeField.style.display = "none";
+    }
+  } catch (e) {}
+})();
 
 (function () {
   const feed = feedUrl();
@@ -152,16 +169,21 @@ async function load() {
 }
 
 document.getElementById("go").onclick = async () => {
+  if (goBtn.disabled) return;
   const name = document.getElementById("name").value.trim();
+  const code = codeField.value.trim();
   if (!name) { status.textContent = "Need a name."; return; }
+  if (!code) { status.textContent = "Need the room code from the venue."; return; }
   if (!pick) { status.textContent = "Pick an open spot."; return; }
   const feed = feedUrl();
   status.textContent = "Sending...";
+  goBtn.disabled = true;
   try {
     const j = await jsonp(feed, {
       action: "claim",
       name,
       order: pick,
+      code,
       chat_name: document.getElementById("chat").value.trim(),
       social: document.getElementById("social").value.trim(),
       note: document.getElementById("note").value.trim(),
@@ -183,6 +205,8 @@ document.getElementById("go").onclick = async () => {
     if (j.slots) draw(j.slots);
   } catch (e) {
     status.textContent = "Network miss. Try again.";
+  } finally {
+    goBtn.disabled = false;
   }
 };
 
