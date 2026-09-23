@@ -25,7 +25,8 @@
   button#go:disabled { opacity:.5; }
   .ok { color:var(--on); font-weight:700; min-height:1.4em; }
   .grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin:10px 0 14px; }
-  .slot { min-height:48px; border:0; border-radius:10px; font-weight:700; background:rgba(57,255,20,0.15); color:#39ff14; }
+  .slot { min-height:56px; border:0; border-radius:10px; font-weight:700; background:rgba(57,255,20,0.15); color:#39ff14; font-size:.95rem; }
+  .slot.taken { background:rgba(255,255,255,0.08); color:#8a7ba0; font-weight:600; font-size:.72rem; line-height:1.15; }
   .slot.pick { background:var(--orange); color:#111; }
   .viewlink { display:block; text-align:center; margin-top:18px; color:#8a7ba0; font-size:.82rem; text-decoration:underline; }
   footer { margin-top:22px; color:#8a7ba0; font-size:.72rem; text-align:center; line-height:1.4; }
@@ -68,6 +69,8 @@ const DEFAULT_SHOW = "Comedy Simulator";
 const status = document.getElementById("status");
 const goBtn = document.getElementById("go");
 let pick = 0;
+let lastSlots = [];
+let loading = false;
 function deviceId() {
   try {
     let id = localStorage.getItem("setpulse_device_id");
@@ -93,7 +96,7 @@ function feedUrl() {
 })();
 
 let jsonpCounter = 0;
-function jsonp(url, params) {
+function jsonp(url, params, timeoutMs) {
   return new Promise((resolve, reject) => {
     const cbName = "setpulse_cb_" + (jsonpCounter++) + "_" + Date.now();
     const script = document.createElement("script");
@@ -104,7 +107,7 @@ function jsonp(url, params) {
       window[cbName] = () => {};
       script.remove();
       reject(new Error("timeout"));
-    }, 12000);
+    }, timeoutMs || 20000);
     function cleanup() {
       clearTimeout(timer);
       script.remove();
@@ -122,26 +125,50 @@ function jsonp(url, params) {
       cleanup();
       reject(new Error("network"));
     };
-    const qs = new URLSearchParams(Object.assign({}, params, { callback: cbName })).toString();
+    const qs = new URLSearchParams(Object.assign({}, params, { callback: cbName, _t: Date.now() })).toString();
     script.src = url + (url.indexOf("?") === -1 ? "?" : "&") + qs;
     document.body.appendChild(script);
   });
 }
 
+async function jsonpRetry(url, params) {
+  try { return await jsonp(url, params, 20000); }
+  catch (e) { return await jsonp(url, params, 20000); }
+}
+
 function draw(slots) {
-  const open = (slots || []).filter(s => s.open);
-  document.getElementById("grid").innerHTML = open.length
-    ? open.map(s => `<button type="button" class="slot${Number(s.order) === pick ? ' pick' : ''}" data-n="${s.order}">${s.order}</button>`).join("")
-    : '<p class="mut" style="grid-column:1/-1">List is full right now.</p>';
-  document.querySelectorAll(".slot").forEach(b => {
-    b.onclick = () => { pick = Number(b.dataset.n); draw(slots); };
+  const list = slots || [];
+  lastSlots = list;
+  const open = list.filter(s => s.open);
+  if (!list.length) {
+    document.getElementById("grid").innerHTML = '<p class="mut" style="grid-column:1/-1">Waiting for slots…</p>';
+    return;
+  }
+  document.getElementById("grid").innerHTML = list.map(s => {
+    if (s.open) {
+      return `<button type="button" class="slot${Number(s.order) === pick ? ' pick' : ''}" data-n="${s.order}">${s.order}</button>`;
+    }
+    const label = (s.name || "taken").slice(0, 12);
+    return `<button type="button" class="slot taken" disabled>${s.order}<br>${label}</button>`;
+  }).join("");
+  document.querySelectorAll(".slot:not(.taken)").forEach(b => {
+    b.onclick = () => { pick = Number(b.dataset.n); draw(lastSlots); };
   });
+  if (!open.length) {
+    const note = document.createElement("p");
+    note.className = "mut";
+    note.style.gridColumn = "1/-1";
+    note.textContent = "List is full right now.";
+    document.getElementById("grid").appendChild(note);
+  }
 }
 
 async function load() {
+  if (loading) return;
+  loading = true;
   const feed = feedUrl();
   try {
-    const j = await jsonp(feed, { format: "slots" });
+    const j = await jsonpRetry(feed, { format: "slots" });
     const themeLine = document.getElementById("themeLine");
     if (j.theme) {
       themeLine.textContent = "Tonight's theme: " + j.theme;
@@ -155,9 +182,16 @@ async function load() {
       return;
     }
     goBtn.disabled = false;
-    draw(j.slots || []);
+    draw(j.slots || lastSlots);
+    if (status.textContent === "Could not load slots." || status.textContent === "Still catching up…") status.textContent = "";
   } catch (e) {
-    status.textContent = "Could not load slots.";
+    if (lastSlots.length) {
+      if (!status.textContent || status.textContent === "Could not load slots.") status.textContent = "Still catching up…";
+    } else {
+      status.textContent = "Could not load slots.";
+    }
+  } finally {
+    loading = false;
   }
 }
 
@@ -170,7 +204,7 @@ document.getElementById("go").onclick = async () => {
   status.textContent = "Sending...";
   goBtn.disabled = true;
   try {
-    const j = await jsonp(feed, {
+    const j = await jsonpRetry(feed, {
       action: "claim",
       name,
       order: pick,
@@ -202,7 +236,8 @@ document.getElementById("go").onclick = async () => {
 };
 
 load();
-setInterval(load, 8000);
+setInterval(load, 4000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 </script>
 </body>
 </html>

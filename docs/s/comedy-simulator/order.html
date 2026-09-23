@@ -58,7 +58,8 @@ function feedUrl() {
 }
 
 let jsonpCounter = 0;
-function jsonp(url, params) {
+let loading = false;
+function jsonp(url, params, timeoutMs) {
   return new Promise((resolve, reject) => {
     const cbName = "setpulse_cb_" + (jsonpCounter++) + "_" + Date.now();
     const script = document.createElement("script");
@@ -69,7 +70,7 @@ function jsonp(url, params) {
       window[cbName] = () => {};
       script.remove();
       reject(new Error("timeout"));
-    }, 12000);
+    }, timeoutMs || 20000);
     function cleanup() {
       clearTimeout(timer);
       script.remove();
@@ -87,16 +88,18 @@ function jsonp(url, params) {
       cleanup();
       reject(new Error("network"));
     };
-    const qs = new URLSearchParams(Object.assign({}, params, { callback: cbName })).toString();
+    const qs = new URLSearchParams(Object.assign({}, params, { callback: cbName, _t: Date.now() })).toString();
     script.src = url + (url.indexOf("?") === -1 ? "?" : "&") + qs;
     document.body.appendChild(script);
   });
 }
 
 async function load() {
+  if (loading) return;
+  loading = true;
   const feed = feedUrl();
   try {
-    const j = await jsonp(feed, { format: "full" });
+    const j = await jsonp(feed, { format: "full" }, 20000);
     const obs = j.obs || {};
     document.getElementById("nowName").textContent = obs.now || "—";
     document.getElementById("nextName").textContent = obs.next ? ("Next: " + obs.next) : "";
@@ -113,12 +116,18 @@ async function load() {
         </div>`).join("")
       : '<p class="empty">List is empty.</p>';
   } catch (e) {
-    document.getElementById("lineup").innerHTML = '<p class="empty">Could not load the lineup.</p>';
+    const box = document.getElementById("lineup");
+    if (!box.innerHTML || box.innerHTML.indexOf("List is empty") !== -1) {
+      box.innerHTML = '<p class="empty">Still catching up…</p>';
+    }
+  } finally {
+    loading = false;
   }
 }
 
 load();
-setInterval(load, 8000);
+setInterval(load, 4000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 </script>
 </body>
 </html>
