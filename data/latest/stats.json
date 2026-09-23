@@ -1,0 +1,59 @@
+{
+  "generated_at": "2026-09-23T16:23:21.087454+00:00",
+  "window_source": "caption_cue_auto_detected",
+  "comics": {
+    "between_sets": {
+      "messages": 33,
+      "avg_sentiment": 0.0303,
+      "positive": 1,
+      "negative": 0,
+      "neutral": 32
+    },
+    "Pa Bay Coffee (auto-detected, please verify)": {
+      "messages": 1060,
+      "avg_sentiment": 0.0679,
+      "positive": 94,
+      "negative": 22,
+      "neutral": 944
+    },
+    "Bashar's Middle Eastern (auto-detected, please verify)": {
+      "messages": 507,
+      "avg_sentiment": 0.0316,
+      "positive": 32,
+      "negative": 16,
+      "neutral": 459
+    },
+    "Chino (auto-detected, please verify)": {
+      "messages": 192,
+      "avg_sentiment": 0.0312,
+      "positive": 13,
+      "negative": 7,
+      "neutral": 172
+    },
+    "Gino (auto-detected, please verify)": {
+      "messages": 437,
+      "avg_sentiment": 0.0915,
+      "positive": 51,
+      "negative": 11,
+      "neutral": 375
+    },
+    "Mr (auto-detected, please verify)": {
+      "messages": 80,
+      "avg_sentiment": 0.0875,
+      "positive": 9,
+      "negative": 2,
+      "neutral": 69
+    },
+    "yourselves (auto-detected, please verify)": {
+      "messages": 321,
+      "avg_sentiment": 0.0997,
+      "positive": 33,
+      "negative": 1,
+      "neutral": 287
+    }
+  },
+  "totals": {
+    "messages": 2630,
+    "comics_with_chat": 6
+  }
+}
