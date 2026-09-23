@@ -68,6 +68,16 @@ const DEFAULT_SHOW = "Comedy Simulator";
 const status = document.getElementById("status");
 const goBtn = document.getElementById("go");
 let pick = 0;
+function deviceId() {
+  try {
+    let id = localStorage.getItem("setpulse_device_id");
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + "-" + Math.random().toString(16).slice(2)));
+      localStorage.setItem("setpulse_device_id", id);
+    }
+    return id;
+  } catch (e) { return ""; }
+}
 
 const DEFAULT_FEED = "https://script.google.com/macros/s/AKfycbzzak7TIvNwJDX_9Ea7S79RU_9jAXaOKdOvE2Uc1cz_AkEdCmvZpVjpkyzHi1RhEwYoEg/exec";
 function feedUrl() {
@@ -91,7 +101,7 @@ function jsonp(url, params) {
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      window[cbName] = () => {}; // absorb a late response instead of throwing
+      window[cbName] = () => {};
       script.remove();
       reject(new Error("timeout"));
     }, 12000);
@@ -152,11 +162,13 @@ async function load() {
 }
 
 document.getElementById("go").onclick = async () => {
+  if (goBtn.disabled) return;
   const name = document.getElementById("name").value.trim();
   if (!name) { status.textContent = "Need a name."; return; }
   if (!pick) { status.textContent = "Pick an open spot."; return; }
   const feed = feedUrl();
   status.textContent = "Sending...";
+  goBtn.disabled = true;
   try {
     const j = await jsonp(feed, {
       action: "claim",
@@ -167,7 +179,8 @@ document.getElementById("go").onclick = async () => {
       note: document.getElementById("note").value.trim(),
       show: DEFAULT_SHOW,
       source: "list",
-      channel: "list_page"
+      channel: "list_page",
+      device_id: deviceId()
     });
     if (j.ok) {
       status.textContent = "You're #" + j.order + ".";
@@ -183,6 +196,8 @@ document.getElementById("go").onclick = async () => {
     if (j.slots) draw(j.slots);
   } catch (e) {
     status.textContent = "Network miss. Try again.";
+  } finally {
+    goBtn.disabled = false;
   }
 };
 

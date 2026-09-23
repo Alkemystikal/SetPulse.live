@@ -1,0 +1,146 @@
+name: SetPulse sentiment archive
+
+# Runs on its own - no terminal, no manual script run. Add YOUTUBE_API_KEY
+# and SETPULSE_ARCHIVE_BASE as repo secrets (Settings -> Secrets and
+# variables -> Actions) before the first run.
+on:
+  schedule:
+    - cron: "0 12 * * *"   # every day at 12:00 UTC - adjust to taste
+  workflow_dispatch:
+    inputs:
+      video_id:
+        description: "Optional: specific video ID to backfill (leave blank to auto-detect the latest completed stream)"
+        required: false
+      date:
+        description: "Optional: show date YYYY-MM-DD (required if video_id is set)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    # This sidecar container runs alongside the job and generates "PO tokens"
+    # (proof-of-origin tokens). YouTube has been requiring these in addition
+    # to cookies for most automated requests, especially from cloud/datacenter
+    # IPs like GitHub's runners - cookies alone stopped being enough. This
+    # doesn't pretend to be a different app or device; it's just a small local
+    # helper yt-dlp talks to on 127.0.0.1:4416 to fetch a token YouTube asks
+    # for. yt-dlp finds it automatically once it's running and the matching
+    # pip packages (below) are installed - no extra flags needed.
+    services:
+      bgutil-pot:
+        image: brainicism/bgutil-ytdlp-pot-provider
+        ports:
+          - 4416:4416
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -U yt-dlp yt-dlp-get-pot bgutil-ytdlp-pot-provider
+
+      - name: Install deno (yt-dlp needs a JS runtime to get past YouTube's bot check)
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh
+          echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
+
+      - name: Give the PO token provider a moment to finish starting
+        run: sleep 5
+
+      - name: Write YouTube cookies (lets yt-dlp pass YouTube's "sign in to confirm
+          you're not a bot" check - see YTDLP_COOKIES secret)
+        env:
+          # Passed through the environment, NOT interpolated into the
+          # script text below - a multi-line secret embedded directly into
+          # a run: block (via ${{ }}) shows up as many masked lines in the
+          # log preview, one per line of the secret. Referencing it as an
+          # env var here avoids that entirely.
+          YTDLP_COOKIES: ${{ secrets.YTDLP_COOKIES }}
+        run: |
+          if [ -n "$YTDLP_COOKIES" ]; then
+            printf '%s' "$YTDLP_COOKIES" > "$RUNNER_TEMP/yt_cookies.txt"
+            echo "YT_DLP_COOKIES_FILE=$RUNNER_TEMP/yt_cookies.txt" >> "$GITHUB_ENV"
+            BYTES=$(wc -c < "$RUNNER_TEMP/yt_cookies.txt")
+            FIRST_CHAR=$(head -c 1 "$RUNNER_TEMP/yt_cookies.txt")
+            echo "YTDLP_COOKIES secret found - wrote $BYTES bytes to file (starts with '$FIRST_CHAR' - "
+            echo "expect '#' for Netscape format, or '[' or '{' for a JSON export; anything else "
+            echo "likely means something other than the cookie export got pasted in)."
+          else
+            echo "YTDLP_COOKIES secret is NOT set (or is empty) - continuing without cookies, "
+            echo "which will likely hit YouTube's bot check."
+          fi
+
+      - name: Validate proxy secret format (checks structure only, never prints the value)
+        env:
+          YT_DLP_PROXY: ${{ secrets.YT_DLP_PROXY }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+
+          value = os.environ.get("YT_DLP_PROXY", "").strip()
+          if not value:
+              print("YT_DLP_PROXY is empty - yt-dlp will use this runner's own IP.")
+              raise SystemExit(0)
+
+          parsed = urlsplit(value)
+          try:
+              port = parsed.port
+          except ValueError as exc:
+              raise SystemExit(f"YT_DLP_PROXY has an invalid port: {exc}")
+
+          problems = []
+          if parsed.scheme not in {"http", "https", "socks4", "socks5"}:
+              problems.append(f"scheme is {parsed.scheme!r}, expected http/https/socks4/socks5 "
+                               f"(the value needs to START with e.g. 'http://', not just "
+                               f"'username:password@host:port')")
+          if not parsed.hostname:
+              problems.append("no hostname found after the '@'")
+          if port is None:
+              problems.append("no numeric port found after the hostname (needs a ':1234' at the end)")
+          if not parsed.username:
+              problems.append("no username found before the ':' in 'username:password@'")
+
+          if problems:
+              raise SystemExit("YT_DLP_PROXY doesn't look like a full proxy URL:\n  - " +
+                                "\n  - ".join(problems))
+          print(f"YT_DLP_PROXY format looks valid: {parsed.scheme}://{parsed.hostname}:{port} "
+                f"(username/password present, values not shown)")
+          PY
+
+      - name: Run pipeline (auto-detect latest stream)
+        if: ${{ github.event.inputs.video_id == '' }}
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          SETPULSE_ARCHIVE_BASE: ${{ secrets.SETPULSE_ARCHIVE_BASE }}
+          SETPULSE_CHANNEL_ID: UC_47Pv7ji6eRoRggwyc25ZQ
+          # Optional - only takes effect once the YT_DLP_PROXY secret exists.
+          # Routes yt-dlp's YouTube request through a residential proxy
+          # instead of this runner's own (often bot-check-flagged) IP.
+          YT_DLP_PROXY: ${{ secrets.YT_DLP_PROXY }}
+        run: python3 scripts/sentiment_archive.py --auto --out ./data/latest
+
+      - name: Run pipeline (manual backfill)
+        if: ${{ github.event.inputs.video_id != '' }}
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          SETPULSE_ARCHIVE_BASE: ${{ secrets.SETPULSE_ARCHIVE_BASE }}
+          YT_DLP_PROXY: ${{ secrets.YT_DLP_PROXY }}
+        run: |
+          python3 scripts/sentiment_archive.py \
+            --video-id "${{ github.event.inputs.video_id }}" \
+            --date "${{ github.event.inputs.date }}" \
+            --out ./data/${{ github.event.inputs.date }}
+
+      - name: Commit and push results
+        run: |
+          git config user.name "setpulse-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/
+          git diff --staged --quiet || git commit -m "Auto-archive: sentiment data $(date -u +%Y-%m-%d)"
+          git push

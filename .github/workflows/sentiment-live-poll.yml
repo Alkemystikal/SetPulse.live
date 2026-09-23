@@ -1,0 +1,65 @@
+name: SetPulse live sentiment poll
+
+# Runs every 5 minutes, but ONLY during the scheduled windows below - not
+# round the clock. It's a fast, cheap no-op (about 2-3 YouTube API quota
+# units) whenever nothing is currently live, so it would have been safe to
+# run all day too, but there's no reason to check when nothing's ever on.
+# When a show IS live, it pulls whatever chat has arrived since the last
+# poll and updates that show's rolling data under data/live/.
+#
+# This is a companion to sentiment-archive.yml, not a replacement - the
+# definitive per-comic report still only comes from the regular daily run,
+# once the show has ended and its data has landed in the Sheet. If a show
+# somehow runs past the end of the window below, live updates just stop for
+# the rest of it - the post-show run still captures everything accurately
+# regardless, since it pulls the full replay after the fact.
+#
+# GitHub Actions schedules always run in UTC, so show times need
+# converting. Hawaii (HST) never observes daylight saving, so the offset
+# is always simply: HST time = UTC time minus 10 hours (or: UTC = HST + 10
+# hours, rolling over to the next UTC day/weekday when that crosses
+# midnight). Below: Monday 6:00 PM HST through Tuesday 1:00 AM HST (a
+# 7-hour window around a 6:30 PM start, with buffer on both ends) is
+# Tuesday 4:00-10:59 AM UTC.
+#
+# To add another day/time to check (e.g. a second weekly show), add
+# another "- cron:" line below with its own UTC-converted window, using
+# the same HST-minus-10-hours math. Cron fields are: minute hour
+# day-of-month month day-of-week (day-of-week: 0=Sunday, 1=Monday, ...,
+# 6=Saturday - remember the UTC weekday can be one day ahead of the HST
+# weekday once you cross midnight, as it does here: an HST Monday evening
+# show becomes a UTC Tuesday window).
+on:
+  schedule:
+    - cron: "*/5 4-10 * * 2"   # Mon 6:00 PM - Tue 1:00 AM HST (Tue 04:00-10:59 UTC)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Poll live chat (no-op if nothing is currently live)
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          SETPULSE_CHANNEL_ID: UC_47Pv7ji6eRoRggwyc25ZQ
+        # Writing into docs/live/ (not data/live/) so this is actually
+        # servable by GitHub Pages, which only publishes the docs/ folder -
+        # data/live/ was never reachable by a browser at all.
+        run: python3 scripts/sentiment_archive.py --live-poll --channel-id "$SETPULSE_CHANNEL_ID" --out ./docs/live
+
+      - name: Commit and push live update (only if something changed)
+        run: |
+          git config user.name "setpulse-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/live/
+          git diff --staged --quiet || git commit -m "Live sentiment poll: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push

@@ -1,9 +1,104 @@
 {
-  "performers": [],
+  "performers": [
+    {
+      "name": "Joshua",
+      "started_video_t": 599,
+      "ended_video_t": 798
+    },
+    {
+      "name": "Ivan Natanson",
+      "started_video_t": 798,
+      "ended_video_t": 1086,
+      "social": "@natansong"
+    },
+    {
+      "name": "Morgen T",
+      "started_video_t": 1086,
+      "ended_video_t": 1404,
+      "social": "@morgen43"
+    },
+    {
+      "name": "Shmirky Shurmore",
+      "started_video_t": 1404,
+      "ended_video_t": 1636,
+      "social": "@corkygardner"
+    },
+    {
+      "name": "Danny Salazar",
+      "started_video_t": 1636,
+      "ended_video_t": 2001,
+      "social": "Danny Salazar 9995 instagram"
+    },
+    {
+      "name": "Joel Hewins",
+      "started_video_t": 2001,
+      "ended_video_t": 2309,
+      "social": "Joel_hewins_comedy"
+    },
+    {
+      "name": "Mister E",
+      "started_video_t": 2309,
+      "ended_video_t": 2655,
+      "social": "@ Alkemystikal"
+    },
+    {
+      "name": "Emily",
+      "started_video_t": 2655,
+      "ended_video_t": 3007
+    },
+    {
+      "name": "Jackson Babine",
+      "started_video_t": 3007,
+      "ended_video_t": 3316
+    },
+    {
+      "name": "Shane Nelson",
+      "started_video_t": 3316,
+      "ended_video_t": 3638,
+      "social": "@dude_dog_comedy"
+    },
+    {
+      "name": "Peter",
+      "started_video_t": 3638,
+      "ended_video_t": 4023,
+      "social": "@mauidan13"
+    },
+    {
+      "name": "David Ames",
+      "started_video_t": 4023,
+      "ended_video_t": 4336
+    },
+    {
+      "name": "Jimbo",
+      "started_video_t": 4336,
+      "ended_video_t": 4708
+    },
+    {
+      "name": "Sascha",
+      "started_video_t": 4708,
+      "ended_video_t": 5013,
+      "social": "@saschafrommaui"
+    },
+    {
+      "name": "Juan",
+      "started_video_t": 5013,
+      "ended_video_t": 5323
+    },
+    {
+      "name": "Tyson",
+      "started_video_t": 5323,
+      "ended_video_t": 5733
+    },
+    {
+      "name": "Eddie V",
+      "started_video_t": 5733,
+      "ended_video_t": 6136
+    }
+  ],
   "room": {
-    "pos": 867,
-    "neg": 544,
-    "neu": 1503,
+    "pos": 376,
+    "neg": 125,
+    "neu": 2136,
     "format": 0
   }
 }
