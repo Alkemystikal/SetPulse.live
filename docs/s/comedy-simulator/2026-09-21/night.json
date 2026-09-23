@@ -1,0 +1,13 @@
+{
+  "show": "comedy-simulator",
+  "date": "2026-09-21",
+  "video_id": "em4lQe0pFLM",
+  "stream_start_wall": "2026-09-21T19:08:53",
+  "stream_start_source": "youtube",
+  "title": "Comedy Simulator",
+  "files": {
+    "chat": "chat.csv",
+    "captions": "captions.vtt",
+    "stats": "stats.json"
+  }
+}
