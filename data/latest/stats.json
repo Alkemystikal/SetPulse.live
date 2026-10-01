@@ -1,59 +1,94 @@
 {
-  "generated_at": "2026-09-28T19:21:28.375947+00:00",
+  "generated_at": "2026-10-01T18:08:53.713876+00:00",
   "window_source": "caption_cue_auto_detected",
   "comics": {
     "between_sets": {
-      "messages": 33,
-      "avg_sentiment": 0.0303,
-      "positive": 1,
+      "messages": 68,
+      "avg_sentiment": 0.1029,
+      "positive": 7,
       "negative": 0,
-      "neutral": 32
-    },
-    "Pa Bay Coffee (auto-detected, please verify)": {
-      "messages": 1060,
-      "avg_sentiment": 0.0679,
-      "positive": 94,
-      "negative": 22,
-      "neutral": 944
-    },
-    "Bashar's Middle Eastern (auto-detected, please verify)": {
-      "messages": 507,
-      "avg_sentiment": 0.0316,
-      "positive": 32,
-      "negative": 16,
-      "neutral": 459
-    },
-    "Chino (auto-detected, please verify)": {
-      "messages": 192,
-      "avg_sentiment": 0.0312,
-      "positive": 13,
-      "negative": 7,
-      "neutral": 172
-    },
-    "Gino (auto-detected, please verify)": {
-      "messages": 437,
-      "avg_sentiment": 0.0915,
-      "positive": 51,
-      "negative": 11,
-      "neutral": 375
+      "neutral": 61
     },
     "Mr (auto-detected, please verify)": {
-      "messages": 80,
-      "avg_sentiment": 0.0875,
-      "positive": 9,
+      "messages": 124,
+      "avg_sentiment": 0.0161,
+      "positive": 4,
       "negative": 2,
-      "neutral": 69
+      "neutral": 118
+    },
+    "Chino (auto-detected, please verify)": {
+      "messages": 279,
+      "avg_sentiment": 0.0681,
+      "positive": 27,
+      "negative": 8,
+      "neutral": 244
+    },
+    "Miss Emily (auto-detected, please verify)": {
+      "messages": 65,
+      "avg_sentiment": 0.0923,
+      "positive": 6,
+      "negative": 0,
+      "neutral": 59
+    },
+    "Dove (auto-detected, please verify)": {
+      "messages": 319,
+      "avg_sentiment": 0.0784,
+      "positive": 28,
+      "negative": 3,
+      "neutral": 288
+    },
+    "my daughter (auto-detected, please verify)": {
+      "messages": 263,
+      "avg_sentiment": -0.0038,
+      "positive": 18,
+      "negative": 19,
+      "neutral": 226
+    },
+    "my lovely assistant (auto-detected, please verify)": {
+      "messages": 135,
+      "avg_sentiment": 0.0296,
+      "positive": 6,
+      "negative": 2,
+      "neutral": 127
+    },
+    "my buddy Bash (auto-detected, please verify)": {
+      "messages": 35,
+      "avg_sentiment": 0.0,
+      "positive": 3,
+      "negative": 3,
+      "neutral": 29
+    },
+    "yourself (auto-detected, please verify)": {
+      "messages": 39,
+      "avg_sentiment": 0.0256,
+      "positive": 4,
+      "negative": 3,
+      "neutral": 32
+    },
+    "Ed (auto-detected, please verify)": {
+      "messages": 84,
+      "avg_sentiment": 0.0595,
+      "positive": 5,
+      "negative": 0,
+      "neutral": 79
+    },
+    "MISS SASHA (auto-detected, please verify)": {
+      "messages": 183,
+      "avg_sentiment": 0.0437,
+      "positive": 10,
+      "negative": 2,
+      "neutral": 171
     },
     "yourselves (auto-detected, please verify)": {
-      "messages": 321,
-      "avg_sentiment": 0.0997,
-      "positive": 33,
+      "messages": 110,
+      "avg_sentiment": 0.1273,
+      "positive": 15,
       "negative": 1,
-      "neutral": 287
+      "neutral": 94
     }
   },
   "totals": {
-    "messages": 2630,
-    "comics_with_chat": 6
+    "messages": 1704,
+    "comics_with_chat": 11
   }
 }
