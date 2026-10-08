@@ -1,94 +1,129 @@
 {
-  "generated_at": "2026-10-04T16:32:57.007599+00:00",
+  "generated_at": "2026-10-08T18:32:16.506337+00:00",
   "window_source": "caption_cue_auto_detected",
   "comics": {
     "between_sets": {
-      "messages": 68,
-      "avg_sentiment": 0.1029,
-      "positive": 7,
-      "negative": 0,
-      "neutral": 61
+      "messages": 202,
+      "avg_sentiment": 0.0198,
+      "positive": 11,
+      "negative": 7,
+      "neutral": 184
     },
-    "Mr (auto-detected, please verify)": {
-      "messages": 124,
-      "avg_sentiment": 0.0161,
+    "Chuck (auto-detected, please verify)": {
+      "messages": 33,
+      "avg_sentiment": 0.0909,
       "positive": 4,
-      "negative": 2,
-      "neutral": 118
+      "negative": 1,
+      "neutral": 28
     },
     "Chino (auto-detected, please verify)": {
-      "messages": 279,
-      "avg_sentiment": 0.0681,
-      "positive": 27,
-      "negative": 8,
-      "neutral": 244
+      "messages": 27,
+      "avg_sentiment": 0.037,
+      "positive": 2,
+      "negative": 1,
+      "neutral": 24
     },
-    "Miss Emily (auto-detected, please verify)": {
-      "messages": 65,
+    "your host (auto-detected, please verify)": {
+      "messages": 163,
+      "avg_sentiment": 0.0123,
+      "positive": 9,
+      "negative": 7,
+      "neutral": 147
+    },
+    "Chino Leforge (auto-detected, please verify)": {
+      "messages": 195,
       "avg_sentiment": 0.0923,
-      "positive": 6,
-      "negative": 0,
-      "neutral": 59
+      "positive": 26,
+      "negative": 8,
+      "neutral": 161
     },
-    "Dove (auto-detected, please verify)": {
-      "messages": 319,
-      "avg_sentiment": 0.0784,
-      "positive": 28,
-      "negative": 3,
-      "neutral": 288
-    },
-    "my daughter (auto-detected, please verify)": {
-      "messages": 263,
-      "avg_sentiment": -0.0038,
-      "positive": 18,
-      "negative": 19,
-      "neutral": 226
-    },
-    "my lovely assistant (auto-detected, please verify)": {
-      "messages": 135,
-      "avg_sentiment": 0.0296,
-      "positive": 6,
-      "negative": 2,
-      "neutral": 127
-    },
-    "my buddy Bash (auto-detected, please verify)": {
-      "messages": 35,
-      "avg_sentiment": 0.0,
+    "RONDA LEE (auto-detected, please verify)": {
+      "messages": 77,
+      "avg_sentiment": 0.026,
       "positive": 3,
-      "negative": 3,
-      "neutral": 29
+      "negative": 1,
+      "neutral": 73
     },
-    "yourself (auto-detected, please verify)": {
-      "messages": 39,
-      "avg_sentiment": 0.0256,
-      "positive": 4,
-      "negative": 3,
-      "neutral": 32
+    "unknown (auto-detected, please verify)": {
+      "messages": 323,
+      "avg_sentiment": 0.0495,
+      "positive": 18,
+      "negative": 2,
+      "neutral": 303
     },
-    "Ed (auto-detected, please verify)": {
-      "messages": 84,
-      "avg_sentiment": 0.0595,
-      "positive": 5,
+    "that (auto-detected, please verify)": {
+      "messages": 14,
+      "avg_sentiment": 0.0714,
+      "positive": 1,
       "negative": 0,
-      "neutral": 79
+      "neutral": 13
     },
-    "MISS SASHA (auto-detected, please verify)": {
-      "messages": 183,
-      "avg_sentiment": 0.0437,
+    "Peely (auto-detected, please verify)": {
+      "messages": 11,
+      "avg_sentiment": 0.0909,
+      "positive": 1,
+      "negative": 0,
+      "neutral": 10
+    },
+    "Gino (auto-detected, please verify)": {
+      "messages": 10,
+      "avg_sentiment": 0.0,
+      "positive": 0,
+      "negative": 0,
+      "neutral": 10
+    },
+    "Grinder so hard (auto-detected, please verify)": {
+      "messages": 146,
+      "avg_sentiment": 0.0753,
+      "positive": 14,
+      "negative": 3,
+      "neutral": 129
+    },
+    "Mr (auto-detected, please verify)": {
+      "messages": 158,
+      "avg_sentiment": 0.0759,
+      "positive": 14,
+      "negative": 2,
+      "neutral": 142
+    },
+    "Semily (auto-detected, please verify)": {
+      "messages": 129,
+      "avg_sentiment": 0.0233,
+      "positive": 4,
+      "negative": 1,
+      "neutral": 124
+    },
+    "Sasha (auto-detected, please verify)": {
+      "messages": 318,
+      "avg_sentiment": 0.044,
+      "positive": 23,
+      "negative": 9,
+      "neutral": 286
+    },
+    "Moby Dog (auto-detected, please verify)": {
+      "messages": 103,
+      "avg_sentiment": 0.0777,
       "positive": 10,
       "negative": 2,
-      "neutral": 171
+      "neutral": 91
     },
-    "yourselves (auto-detected, please verify)": {
-      "messages": 110,
-      "avg_sentiment": 0.1273,
-      "positive": 15,
+    "UNCLE WY (auto-detected, please verify)": {
+      "messages": 176,
+      "avg_sentiment": 0.0341,
+      "positive": 9,
+      "negative": 3,
+      "neutral": 164
+    },
+    "BBC (auto-detected, please verify)": {
+      "messages": 143,
+      "avg_sentiment": 0.049,
+      "positive": 8,
       "negative": 1,
-      "neutral": 94
+      "neutral": 134
     }
   },
   "totals": {
-    "messages": 1704,
-    "comics_with_chat": 11
+    "messages": 2228,
+    "comics_with_chat": 16
   }
 }
