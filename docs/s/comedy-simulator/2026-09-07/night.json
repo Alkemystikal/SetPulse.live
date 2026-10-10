@@ -9,5 +9,6 @@
     "chat": "chat.csv",
     "captions": "captions.vtt",
     "stats": "stats.json"
-  }
+  },
+  "monitor_notes": "Local comedy-night-monitor reports (part1 ended 19:41, part2 ended 21:07) added under stats.json monitor_reports. Primary performer windows and chat sentiment remain the pipeline values."
 }

@@ -138,5 +138,78 @@
     "neg": 351,
     "neu": 1069,
     "format": 0
+  },
+  "monitor_reports": {
+    "part1_ended_1941": {
+      "total_messages": 303,
+      "unique_chatters": 40,
+      "messages_per_minute": 5.0,
+      "relevant_comments": 28,
+      "super_chats": 0,
+      "positive_comments": 93,
+      "negative_comments": 49,
+      "mentions": [
+        {"name": "Jimbo", "count": 13},
+        {"name": "Chino LaForge", "count": 8},
+        {"name": "Bashar", "count": 4},
+        {"name": "Joshua", "count": 2},
+        {"name": "Skyler Greene", "count": 1}
+      ],
+      "top_chatters": [
+        {"handle": "@JimboTheComic", "messages": 38},
+        {"handle": "@joshuabutterwick3156", "messages": 27},
+        {"handle": "@TheSupercorky", "messages": 24},
+        {"handle": "@ineverlutes", "messages": 22},
+        {"handle": "@Pinkskinnedgoblin", "messages": 22}
+      ],
+      "note": "No performer changes logged via UP Deck. No known comedians posted in chat."
+    },
+    "part2_ended_2107": {
+      "total_messages": 1058,
+      "unique_chatters": 101,
+      "messages_per_minute": 17.6,
+      "relevant_comments": 143,
+      "super_chats": 0,
+      "positive_comments": 272,
+      "negative_comments": 186,
+      "audience_by_set": [
+        {"name": "Jimbo & John Calle", "comments": 594, "pos": 153, "neg": 104, "neu": 337},
+        {"name": "Chino LaForge & Bender", "comments": 152, "pos": 36, "neg": 32, "neu": 84},
+        {"name": "Eddie V & Erin", "comments": 91, "pos": 15, "neg": 21, "neu": 55},
+        {"name": "Chino LaForge", "comments": 79, "pos": 24, "neg": 6, "neu": 49},
+        {"name": "Morgan & Jamie", "comments": 49, "pos": 16, "neg": 5, "neu": 28},
+        {"name": "Mister E & Brady", "comments": 34, "pos": 9, "neg": 8, "neu": 17},
+        {"name": "Shane Nelson & Jackson Babine", "comments": 25, "pos": 9, "neg": 6, "neu": 10},
+        {"name": "Yej & Shane Nelson", "comments": 6, "pos": 0, "neg": 1, "neu": 5}
+      ],
+      "most_positive": "Shane Nelson & Jackson Babine (9/25 positive, 36%)",
+      "mentions": [
+        {"name": "Jimbo", "count": 107},
+        {"name": "Chino LaForge", "count": 29},
+        {"name": "Earl", "count": 8},
+        {"name": "Mister E", "count": 2},
+        {"name": "Sasha", "count": 1}
+      ],
+      "top_chatters": [
+        {"handle": "@TheSupercorky", "messages": 97},
+        {"handle": "@JimboTheComic", "messages": 69},
+        {"handle": "@S.D.L-m1j", "messages": 66},
+        {"handle": "@CarlCramer88", "messages": 59},
+        {"handle": "@TheFonz545", "messages": 52}
+      ],
+      "performer_changes": [
+        "20:09 Eddie V & Erin",
+        "20:14 Morgan & Jamie",
+        "20:16 Shane Nelson & Jackson Babine",
+        "20:18 Jimbo & John Calle",
+        "20:21 Mister E & Brady",
+        "20:21 Jimbo & John Calle",
+        "20:48 Mister E & Brady",
+        "20:50 Yej & Shane Nelson",
+        "20:50 Chino LaForge & Bender",
+        "20:59 Chino LaForge"
+      ],
+      "note": "No known comedians posted in chat. Monitor numbers differ slightly from pipeline stats (different windowing/scoring)."
+    }
   }
 }
