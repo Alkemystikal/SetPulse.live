@@ -57,7 +57,36 @@ jobs:
           SETPULSE_ARCHIVE_BASE: ${{ secrets.SETPULSE_ARCHIVE_BASE }}
           SETPULSE_CHANNEL_ID: UC_47Pv7ji6eRoRggwyc25ZQ
           YT_DLP_PROXY: ${{ secrets.YT_DLP_PROXY }}
-        run: python3 scripts/sentiment_archive.py --auto --out ./data/latest
+        run: |
+          # Skip if the newest video already has a night folder
+          python3 - <<'PY'
+          import os, json, urllib.request, urllib.parse, glob
+          key = os.environ["YOUTUBE_API_KEY"]
+          cid = os.environ["SETPULSE_CHANNEL_ID"]
+          q = urllib.parse.urlencode({"key": key, "channelId": cid, "part": "snippet", "order": "date", "type": "video", "maxResults": 5})
+          with urllib.request.urlopen(f"https://www.googleapis.com/youtube/v3/search?{q}") as r:
+              data = json.load(r)
+          vids = [i["id"]["videoId"] for i in data.get("items", []) if "videoId" in i.get("id", {})]
+          archived = set()
+          for p in glob.glob("docs/s/comedy-simulator/*/night.json"):
+              try:
+                  archived.add(json.load(open(p)).get("video_id", ""))
+              except Exception:
+                  pass
+          newest = next((v for v in vids if v not in archived), None)
+          if not newest:
+              print("Newest streams already archived — skipping")
+              open("/tmp/skip", "w").write("1")
+          else:
+              print(f"Will archive {newest}")
+              open("/tmp/skip", "w").write("0")
+              open("/tmp/vid", "w").write(newest)
+          PY
+          if [ "$(cat /tmp/skip)" = "1" ]; then
+            echo "Skipping auto run — no new stream"
+            exit 0
+          fi
+          python3 scripts/sentiment_archive.py --auto --out ./data/latest
 
       - name: Run pipeline (manual backfill)
         if: ${{ github.event.inputs.video_id != '' }}
