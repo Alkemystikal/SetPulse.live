@@ -1,35 +1,16 @@
 {
-  "performers": [
-    {"name": "Abra Quinn", "started_video_t": 1057.4, "ended_video_t": 1352.0, "chat": {"pos": 0, "neg": 0, "neu": 0, "format": 0}, "mentions_gated": 0},
-    {"name": "Sascha", "started_video_t": 1352.0, "ended_video_t": 1704.4, "chat": {"pos": 0, "neg": 0, "neu": 0, "format": 0}, "mentions_gated": 0},
-    {"name": "Corky Gardner", "started_video_t": 1704.4, "ended_video_t": 2017.0, "chat": {"pos": 0, "neg": 0, "neu": 0, "format": 0}, "mentions_gated": 0},
-    {"name": "Dan Steeby", "started_video_t": 2128.0, "ended_video_t": 2204.0, "chat": {"pos": 9, "neg": 3, "neu": 16, "format": 0}, "mentions_gated": 0},
-    {"name": "Morgen Thomasian", "started_video_t": 2205.0, "ended_video_t": 2541.0, "chat": {"pos": 42, "neg": 23, "neu": 52, "format": 0}, "mentions_gated": 0},
-    {"name": "Shane Nelson", "started_video_t": 2542.0, "ended_video_t": 2919.0, "chat": {"pos": 24, "neg": 18, "neu": 55, "format": 0}, "mentions_gated": 0},
-    {"name": "Jackson Babine", "started_video_t": 2933.0, "ended_video_t": 3215.0, "chat": {"pos": 27, "neg": 20, "neu": 46, "format": 0}, "mentions_gated": 0},
-    {"name": "Dumpster Danny Salazar", "started_video_t": 3216.0, "ended_video_t": 3609.0, "chat": {"pos": 40, "neg": 30, "neu": 77, "format": 0}, "mentions_gated": 0},
-    {"name": "Bashar", "started_video_t": 3621.0, "ended_video_t": 3942.0, "chat": {"pos": 32, "neg": 16, "neu": 45, "format": 0}, "mentions_gated": 6},
-    {"name": "Joel Hewins", "started_video_t": 3953.0, "ended_video_t": 4252.0, "chat": {"pos": 39, "neg": 33, "neu": 52, "format": 0}, "mentions_gated": 0},
-    {"name": "Jimbo", "started_video_t": 4256.0, "ended_video_t": 4592.0, "chat": {"pos": 59, "neg": 27, "neu": 95, "format": 0}, "mentions_gated": 79},
-    {"name": "Semele", "started_video_t": 4597.0, "ended_video_t": 4935.0, "chat": {"pos": 48, "neg": 45, "neu": 105, "format": 0}, "mentions_gated": 0},
-    {"name": "Mister E", "started_video_t": 4938.0, "ended_video_t": 5318.0, "chat": {"pos": 57, "neg": 43, "neu": 128, "format": 0}, "mentions_gated": 4},
-    {"name": "Chuck Sauce Thompson", "started_video_t": 5320.0, "ended_video_t": 5772.0, "chat": {"pos": 50, "neg": 36, "neu": 99, "format": 0}, "mentions_gated": 0},
-    {"name": "Eddie V", "started_video_t": 5781.0, "ended_video_t": 6271.0, "chat": {"pos": 58, "neg": 38, "neu": 130, "format": 0}, "mentions_gated": 0},
-    {"name": "Jamie", "started_video_t": 6272.0, "ended_video_t": 6446.5, "chat": {"pos": 81, "neg": 41, "neu": 166, "format": 0}, "mentions_gated": 0}
-  ],
-  "room": {"pos": 566, "neg": 373, "neu": 1066, "format": 0},
-  "monitor_reports": {
-    "run_2026-10-05_ended_2138": {
-      "total_messages": 2330,
-      "unique_chatters": 145,
-      "messages_per_minute": 11.2,
-      "relevant_comments": 183,
-      "super_chats": 0,
-      "positive_comments": 681,
-      "negative_comments": 405,
-      "mentions": [{"name": "Jimbo", "count": 105}, {"name": "Chino LaForge", "count": 44}, {"name": "Earl", "count": 10}],
-      "top_chatters": [{"handle": "@JimboTheComic", "messages": 174}, {"handle": "@ineverlutes", "messages": 156}],
-      "note": "Monitor run on 2026-10-05 for video em4lQe0pFLM. Performer windows copied from the 2026-09-21 archive so the page can replay."
-    }
-  }
+  "generated_at": "2026-10-10T10:46:36.770721+00:00",
+  "window_source": "caption_cue_auto_detected",
+  "comics": {
+    "between_sets": {"messages": 202, "avg_sentiment": 0.0198, "positive": 11, "negative": 7, "neutral": 184},
+    "Chuck (auto-detected, please verify)": {"messages": 33, "avg_sentiment": 0.0909, "positive": 4, "negative": 1, "neutral": 28},
+    "Chino (auto-detected, please verify)": {"messages": 27, "avg_sentiment": 0.037, "positive": 2, "negative": 1, "neutral": 24},
+    "your host (auto-detected, please verify)": {"messages": 163, "avg_sentiment": 0.0123, "positive": 9, "negative": 7, "neutral": 147},
+    "Chino Leforge (auto-detected, please verify)": {"messages": 195, "avg_sentiment": 0.0923, "positive": 26, "negative": 8, "neutral": 161},
+    "RONDA LEE (auto-detected, please verify)": {"messages": 77, "avg_sentiment": 0.026, "positive": 3, "negative": 1, "neutral": 73},
+    "unknown (auto-detected, please verify)": {"messages": 323, "avg_sentiment": 0.0495, "positive": 18, "negative": 2, "neutral": 303},
+    "Sasha (auto-detected, please verify)": {"messages": 318, "avg_sentiment": 0.044, "positive": 23, "negative": 9, "neutral": 286}
+  },
+  "totals": {"messages": 2228, "comics_with_chat": 16},
+  "note": "Caption-cue auto-detection. Names need human verification."
 }
