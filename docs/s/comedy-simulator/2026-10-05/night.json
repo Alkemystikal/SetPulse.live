@@ -6,7 +6,8 @@
   "stream_start_source": "monitor",
   "title": "Comedy Simulator",
   "files": {
+    "chat": "chat.csv",
+    "captions": "captions.vtt",
     "stats": "stats.json"
-  },
-  "monitor_notes": "Local comedy-night-monitor run ended 21:38. Connected to existing video em4lQe0pFLM. No performer changes logged via UP Deck. Full pipeline archive not yet present; monitor report only."
+  }
 }
