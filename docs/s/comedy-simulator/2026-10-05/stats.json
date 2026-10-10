@@ -1,0 +1,35 @@
+{
+  "performers": [],
+  "room": {},
+  "monitor_reports": {
+    "ended_2138": {
+      "total_messages": 2330,
+      "unique_chatters": 145,
+      "messages_per_minute": 11.2,
+      "relevant_comments": 183,
+      "super_chats": 0,
+      "positive_comments": 681,
+      "negative_comments": 405,
+      "mentions": [
+        {"name": "Jimbo", "count": 105},
+        {"name": "Chino LaForge", "count": 44},
+        {"name": "Earl", "count": 10},
+        {"name": "Dove", "count": 8},
+        {"name": "Mister E", "count": 7},
+        {"name": "Bashar", "count": 6},
+        {"name": "Danny Salazar", "count": 3},
+        {"name": "Eddie V", "count": 3},
+        {"name": "Skyler Greene", "count": 2},
+        {"name": "Sasha", "count": 1}
+      ],
+      "top_chatters": [
+        {"handle": "@JimboTheComic", "messages": 174},
+        {"handle": "@ineverlutes", "messages": 156},
+        {"handle": "@henryOP8749", "messages": 129},
+        {"handle": "@goodviibes8573", "messages": 122},
+        {"handle": "@williamjohnson1302", "messages": 96}
+      ],
+      "note": "No performer changes logged via UP Deck. No known comedians posted in chat. Monitor run on 2026-10-05 connected to video em4lQe0pFLM."
+    }
+  }
+}
