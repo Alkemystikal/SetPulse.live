@@ -1,0 +1,9 @@
+{
+  "performers": [],
+  "room": {"pos": 0, "neg": 0, "neu": 0, "format": 0},
+  "monitor_reports": {
+    "run_2026-09-15_ended_0010": {
+      "note": "Summary only. No chat CSV was present for this night."
+    }
+  }
+}

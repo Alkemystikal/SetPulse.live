@@ -1,0 +1,7 @@
+{
+  "show": "comedy-simulator",
+  "date": "2026-08-24",
+  "video_id": "",
+  "title": "Comedy Simulator",
+  "files": {"chat": "chat.csv", "stats": "stats.json"}
+}

@@ -1,0 +1,22 @@
+{
+  "performers": [
+    {"name": "Callahan", "started_video_t": 0, "ended_video_t": 600, "chat": {"pos": 69, "neg": 62, "neu": 156, "format": 0}, "mentions_gated": 3},
+    {"name": "Chino LaForge", "started_video_t": 600, "ended_video_t": 1200, "chat": {"pos": 92, "neg": 48, "neu": 135, "format": 0}, "mentions_gated": 22},
+    {"name": "Ivan", "started_video_t": 1200, "ended_video_t": 1800, "chat": {"pos": 37, "neg": 48, "neu": 97, "format": 0}, "mentions_gated": 17},
+    {"name": "Craig", "started_video_t": 1800, "ended_video_t": 2400, "chat": {"pos": 45, "neg": 38, "neu": 82, "format": 0}, "mentions_gated": 4},
+    {"name": "Tyson", "started_video_t": 2400, "ended_video_t": 2700, "chat": {"pos": 11, "neg": 3, "neu": 22, "format": 0}, "mentions_gated": 1}
+  ],
+  "room": {"pos": 256, "neg": 199, "neu": 496, "format": 0},
+  "monitor_reports": {
+    "run_2026-08-24_ended_2144": {
+      "total_messages": 951,
+      "unique_chatters": 66,
+      "messages_per_minute": 23.9,
+      "relevant_comments": 52,
+      "super_chats": 0,
+      "positive_comments": 256,
+      "negative_comments": 199,
+      "note": "From local comedy-night-monitor summary. Performer windows are approximate."
+    }
+  }
+}
