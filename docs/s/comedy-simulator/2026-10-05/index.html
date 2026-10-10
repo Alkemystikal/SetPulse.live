@@ -3,23 +3,67 @@
 <head>
 <meta charset="utf-8">
 <title>Comedy Simulator — 2026-10-05</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
-  body { background:#1a0f2e; color:#f0eafa; font-family:-apple-system,sans-serif; padding:16px; }
-  a { color:#c9a6ff; }
-  .note { background:rgba(255,255,255,0.06); padding:12px; border-radius:10px; margin:12px 0; }
+  :root { --ink:#f0eafa; --orange:#ff7a00; --green:#39ff14; --card:rgba(255,255,255,0.06); --mut:#8a7ba0; --pos:#39ff14; --neg:#ff6b6b; --neu:#8a7ba0; }
+  * { box-sizing:border-box }
+  html, body { height:100%; margin:0; }
+  body {
+    background: radial-gradient(circle at center, #3a1f5d 0%, #1a0f2e 45%, #000000 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 16px 16px 60px;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; color: var(--orange); }
+  .sub { color: var(--mut); font-size: .88rem; margin: 0 0 18px; }
+  .playerWrap { position: relative; width: 100%; padding-top: 56.25%; border-radius: 14px; overflow: hidden; background: #000; margin-bottom: 16px; }
+  .playerWrap iframe { position: absolute; top:0; left:0; width:100%; height:100%; border:0; }
+  h2 { font-size: 1rem; color: var(--orange); margin: 22px 0 10px; }
+  .comics { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .comicBtn {
+    background: var(--card); border: 1px solid rgba(255,255,255,0.1); color: var(--ink);
+    border-radius: 10px; padding: 8px 14px; font-weight: 700; font-size: .92rem; cursor: pointer;
+  }
+  .comicBtn.active { background: var(--orange); color: #111; border-color: var(--orange); }
+  .comicBtn .n { display:block; font-weight:400; font-size:.72rem; color:var(--mut); }
+  .comicBtn.active .n { color: #442200; }
+  .summaryCard { background: var(--card); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px 16px; margin: 10px 0 18px; display:none; }
+  .summaryCard.show { display:block; }
+  .sentRow { display:flex; gap:14px; margin-top:6px; font-size:.85rem; }
+  .sentRow span.dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+  .feed { display:none; max-height: 320px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 4px 10px; }
+  .nowPlaying { min-height: 1.6em; margin: 4px 0 14px; font-size: 1rem; font-weight: 600; color: #ffd9a0; }
+  .nowPlaying .chatMsg { font-weight: 500; }
+  .feed.show { display:block; }
+  .row { display:flex; gap:10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); align-items:flex-start; transition: background 0.3s; }
+  .row.active { background: rgba(255,122,0,0.12); border-radius: 8px; padding-left: 6px; padding-right: 6px; }
+  .row .t { color: var(--mut); font-size: .74rem; width: 52px; flex-shrink:0; padding-top:2px; font-variant-numeric: tabular-nums; }
+  .row .content { flex: 1; }
+  .cue { cursor: pointer; color: #ffd9a0; }
+  .cue:hover { color: var(--orange); text-decoration: underline; }
+  .row.active .cue { color: #ffb347; font-weight: 600; }
+  .chatMsg { font-size: .86rem; color: #d7c8f0; }
+  .chatMsg .author { font-weight: 700; color: #c9a6ff; }
+  .chatMsg.sent-pos { border-left: 2px solid var(--pos); padding-left: 8px; }
+  .chatMsg.sent-neg { border-left: 2px solid var(--neg); padding-left: 8px; }
+  .chatMsg.sent-neu { border-left: 2px solid var(--neu); padding-left: 8px; }
+  .empty { color: var(--mut); font-size: .9rem; }
+  .err { color: #ff6b6b; font-weight: 700; margin: 10px 0; }
+  a.back { color: #c9a6ff; font-size: .85rem; }
+  .logo { width:64px; height:64px; border-radius:50%; display:block; margin:8px auto 4px; }
 </style>
 </head>
 <body>
-<a href="../">&larr; All nights</a>
-<h1>Comedy Simulator — 2026-10-05</h1>
-<p>Monitor report only (video em4lQe0pFLM). Full chat/captions not yet archived.</p>
-<div class="note">
-  <strong>Monitor totals</strong><br>
-  2330 messages · 145 unique chatters · 11.2 msg/min<br>
-  681 positive · 405 negative<br>
-  Top mentions: Jimbo 105, Chino LaForge 44, Earl 10
+<div class="wrap">
+  <a class="back" href="../">&larr; All nights</a>
+  <img class="logo" src="../../../assets/comedy-simulator-logo.png" alt="The Comedy Simulator">
+  <h1 id="title">Comedy Simulator — 2026-10-05</h1>
+  <p class="sub" id="dateLine">Monitor-only entry (video em4lQe0pFLM). Full chat/captions live on the 2026-09-21 archive.</p>
+  <p class="empty">Modeled on past night archive template. See <a href="../2026-09-21/">2026-09-21</a> for the complete player, lineup, and chat.</p>
+  <p>Stats: <a href="stats.json">stats.json</a></p>
 </div>
-<p>See <a href="stats.json">stats.json</a> for the full monitor_reports object.</p>
 </body>
 </html>
