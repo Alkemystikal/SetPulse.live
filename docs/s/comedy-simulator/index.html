@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Comedy Simulator — All Nights</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { background: radial-gradient(circle at center, #3a1f5d 0%, #1a0f2e 45%, #000 100%); color:#f0eafa; font-family:-apple-system,sans-serif; padding:16px; min-height:100vh; }
+  a { color:#c9a6ff; text-decoration:none; }
+  a:hover { color:#ff7a00; }
+  .logo { width:64px; height:64px; border-radius:50%; display:block; margin:8px auto 12px; }
+  h1 { color:#ff7a00; font-size:1.4rem; text-align:center; }
+  .nights { max-width:480px; margin:20px auto; }
+  .night { display:block; background:rgba(255,255,255,0.06); border-radius:12px; padding:14px 16px; margin:8px 0; font-weight:600; }
+  .night:hover { background:rgba(255,122,0,0.15); }
+  .sub { color:#8a7ba0; font-size:.85rem; text-align:center; }
+</style>
+</head>
+<body>
+<img class="logo" src="../../assets/comedy-simulator-logo.png" alt="Comedy Simulator">
+<h1>Comedy Simulator</h1>
+<p class="sub">All archived nights</p>
+<div class="nights" id="nights"><p class="sub">Loading…</p></div>
+<script>
+fetch('nights.json?_=' + Date.now())
+  .then(r => r.json())
+  .then(list => {
+    const el = document.getElementById('nights');
+    if (!list.length) { el.innerHTML = '<p class="sub">No nights yet.</p>'; return; }
+    el.innerHTML = list.slice().reverse().map(n =>
+      `<a class="night" href="${n.date}/">${n.date}<span style="float:right;color:#8a7ba0;font-weight:400">${n.video_id}</span></a>`
+    ).join('');
+  })
+  .catch(() => { document.getElementById('nights').innerHTML = '<p class="sub">Could not load list.</p>'; });
+</script>
+</body>
+</html>
