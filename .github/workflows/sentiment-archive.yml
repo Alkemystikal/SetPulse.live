@@ -21,14 +21,6 @@ permissions:
 jobs:
   archive:
     runs-on: ubuntu-latest
-    # This sidecar container runs alongside the job and generates "PO tokens"
-    # (proof-of-origin tokens). YouTube has been requiring these in addition
-    # to cookies for most automated requests, especially from cloud/datacenter
-    # IPs like GitHub's runners - cookies alone stopped being enough. This
-    # doesn't pretend to be a different app or device; it's just a small local
-    # helper yt-dlp talks to on 127.0.0.1:4416 to fetch a token YouTube asks
-    # for. yt-dlp finds it automatically once it's running and the matching
-    # pip packages (below) are installed - no extra flags needed.
     services:
       bgutil-pot:
         image: brainicism/bgutil-ytdlp-pot-provider
@@ -55,11 +47,6 @@ jobs:
       - name: Write YouTube cookies (lets yt-dlp pass YouTube's "sign in to confirm
           you're not a bot" check - see YTDLP_COOKIES secret)
         env:
-          # Passed through the environment, NOT interpolated into the
-          # script text below - a multi-line secret embedded directly into
-          # a run: block (via ${{ }}) shows up as many masked lines in the
-          # log preview, one per line of the secret. Referencing it as an
-          # env var here avoids that entirely.
           YTDLP_COOKIES: ${{ secrets.YTDLP_COOKIES }}
         run: |
           if [ -n "$YTDLP_COOKIES" ]; then
@@ -119,9 +106,6 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           SETPULSE_ARCHIVE_BASE: ${{ secrets.SETPULSE_ARCHIVE_BASE }}
           SETPULSE_CHANNEL_ID: UC_47Pv7ji6eRoRggwyc25ZQ
-          # Optional - only takes effect once the YT_DLP_PROXY secret exists.
-          # Routes yt-dlp's YouTube request through a residential proxy
-          # instead of this runner's own (often bot-check-flagged) IP.
           YT_DLP_PROXY: ${{ secrets.YT_DLP_PROXY }}
         run: python3 scripts/sentiment_archive.py --auto --out ./data/latest
 
@@ -137,10 +121,86 @@ jobs:
             --date "${{ github.event.inputs.date }}" \
             --out ./data/${{ github.event.inputs.date }}
 
+      - name: Publish night folder to docs/s/
+        run: |
+          python3 - <<'PY'
+          import json, os, shutil, glob
+          from datetime import datetime
+
+          # Prefer explicit date from workflow input, else look for data/<date>/
+          date = os.environ.get("SHOW_DATE", "").strip()
+          if not date:
+              candidates = sorted(glob.glob("data/20*"))
+              if candidates:
+                  date = os.path.basename(candidates[-1])
+          if not date or date == "latest":
+              # Fall back to today's UTC date
+              date = datetime.utcnow().strftime("%Y-%m-%d")
+
+          src = f"data/{date}" if os.path.isdir(f"data/{date}") else "data/latest"
+          if not os.path.isdir(src):
+              print(f"No data folder found at {src} — skipping publish")
+              raise SystemExit(0)
+
+          dest = f"docs/s/comedy-simulator/{date}"
+          os.makedirs(dest, exist_ok=True)
+
+          # Copy the pipeline outputs
+          for name in ("chat.csv", "stats.json", "captions.vtt"):
+              s = os.path.join(src, name)
+              if os.path.exists(s):
+                  shutil.copy2(s, os.path.join(dest, name))
+                  print(f"copied {name}")
+
+          # Minimal night.json if missing
+          night_path = os.path.join(dest, "night.json")
+          if not os.path.exists(night_path):
+              night = {
+                  "show": "comedy-simulator",
+                  "date": date,
+                  "video_id": os.environ.get("VIDEO_ID", ""),
+                  "title": "Comedy Simulator",
+                  "files": {"chat": "chat.csv", "stats": "stats.json"}
+              }
+              with open(night_path, "w") as f:
+                  json.dump(night, f, indent=2)
+                  f.write("\n")
+
+          # Copy index.html template from a recent night if present
+          template = None
+          for p in sorted(glob.glob("docs/s/comedy-simulator/20*/index.html"), reverse=True):
+              if p != os.path.join(dest, "index.html"):
+                  template = p
+                  break
+          if template and not os.path.exists(os.path.join(dest, "index.html")):
+              shutil.copy2(template, os.path.join(dest, "index.html"))
+              print(f"copied index.html from {template}")
+
+          # Update nights.json
+          nights_path = "docs/s/comedy-simulator/nights.json"
+          try:
+              nights = json.load(open(nights_path))
+          except Exception:
+              nights = []
+          if not any(n.get("date") == date for n in nights):
+              nights.append({"date": date, "video_id": os.environ.get("VIDEO_ID", ""), "title": "Comedy Simulator"})
+              with open(nights_path, "w") as f:
+                  json.dump(nights, f, indent=2)
+                  f.write("\n")
+              print(f"added {date} to nights.json")
+          else:
+              print(f"{date} already in nights.json")
+
+          print("publish step done")
+          PY
+        env:
+          SHOW_DATE: ${{ github.event.inputs.date }}
+          VIDEO_ID: ${{ github.event.inputs.video_id }}
+
       - name: Commit and push results
         run: |
           git config user.name "setpulse-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/
-          git diff --staged --quiet || git commit -m "Auto-archive: sentiment data $(date -u +%Y-%m-%d)"
+          git add data/ docs/s/comedy-simulator/
+          git diff --staged --quiet || git commit -m "Auto-archive: sentiment data and night folder $(date -u +%Y-%m-%d)"
           git push
