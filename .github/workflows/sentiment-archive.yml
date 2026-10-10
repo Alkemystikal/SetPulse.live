@@ -1,18 +1,15 @@
 name: SetPulse sentiment archive
 
-# Runs on its own - no terminal, no manual script run. Add YOUTUBE_API_KEY
-# and SETPULSE_ARCHIVE_BASE as repo secrets (Settings -> Secrets and
-# variables -> Actions) before the first run.
 on:
   schedule:
-    - cron: "0 12 * * *"   # every day at 12:00 UTC - adjust to taste
+    - cron: "0 12 * * *"
   workflow_dispatch:
     inputs:
       video_id:
-        description: "Optional: specific video ID to backfill (leave blank to auto-detect the latest completed stream)"
+        description: "Optional: specific video ID to backfill"
         required: false
       date:
-        description: "Optional: show date YYYY-MM-DD (required if video_id is set)"
+        description: "Optional: show date YYYY-MM-DD"
         required: false
 
 permissions:
@@ -36,69 +33,22 @@ jobs:
       - name: Install dependencies
         run: pip install -U yt-dlp yt-dlp-get-pot bgutil-ytdlp-pot-provider
 
-      - name: Install deno (yt-dlp needs a JS runtime to get past YouTube's bot check)
+      - name: Install deno
         run: |
           curl -fsSL https://deno.land/install.sh | sh
           echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
 
-      - name: Give the PO token provider a moment to finish starting
+      - name: Give the PO token provider a moment
         run: sleep 5
 
-      - name: Write YouTube cookies (lets yt-dlp pass YouTube's "sign in to confirm
-          you're not a bot" check - see YTDLP_COOKIES secret)
+      - name: Write YouTube cookies
         env:
           YTDLP_COOKIES: ${{ secrets.YTDLP_COOKIES }}
         run: |
           if [ -n "$YTDLP_COOKIES" ]; then
             printf '%s' "$YTDLP_COOKIES" > "$RUNNER_TEMP/yt_cookies.txt"
             echo "YT_DLP_COOKIES_FILE=$RUNNER_TEMP/yt_cookies.txt" >> "$GITHUB_ENV"
-            BYTES=$(wc -c < "$RUNNER_TEMP/yt_cookies.txt")
-            FIRST_CHAR=$(head -c 1 "$RUNNER_TEMP/yt_cookies.txt")
-            echo "YTDLP_COOKIES secret found - wrote $BYTES bytes to file (starts with '$FIRST_CHAR' - "
-            echo "expect '#' for Netscape format, or '[' or '{' for a JSON export; anything else "
-            echo "likely means something other than the cookie export got pasted in)."
-          else
-            echo "YTDLP_COOKIES secret is NOT set (or is empty) - continuing without cookies, "
-            echo "which will likely hit YouTube's bot check."
           fi
-
-      - name: Validate proxy secret format (checks structure only, never prints the value)
-        env:
-          YT_DLP_PROXY: ${{ secrets.YT_DLP_PROXY }}
-        run: |
-          python3 - <<'PY'
-          import os
-          from urllib.parse import urlsplit
-
-          value = os.environ.get("YT_DLP_PROXY", "").strip()
-          if not value:
-              print("YT_DLP_PROXY is empty - yt-dlp will use this runner's own IP.")
-              raise SystemExit(0)
-
-          parsed = urlsplit(value)
-          try:
-              port = parsed.port
-          except ValueError as exc:
-              raise SystemExit(f"YT_DLP_PROXY has an invalid port: {exc}")
-
-          problems = []
-          if parsed.scheme not in {"http", "https", "socks4", "socks5"}:
-              problems.append(f"scheme is {parsed.scheme!r}, expected http/https/socks4/socks5 "
-                               f"(the value needs to START with e.g. 'http://', not just "
-                               f"'username:password@host:port')")
-          if not parsed.hostname:
-              problems.append("no hostname found after the '@'")
-          if port is None:
-              problems.append("no numeric port found after the hostname (needs a ':1234' at the end)")
-          if not parsed.username:
-              problems.append("no username found before the ':' in 'username:password@'")
-
-          if problems:
-              raise SystemExit("YT_DLP_PROXY doesn't look like a full proxy URL:\n  - " +
-                                "\n  - ".join(problems))
-          print(f"YT_DLP_PROXY format looks valid: {parsed.scheme}://{parsed.hostname}:{port} "
-                f"(username/password present, values not shown)")
-          PY
 
       - name: Run pipeline (auto-detect latest stream)
         if: ${{ github.event.inputs.video_id == '' }}
@@ -121,62 +71,42 @@ jobs:
             --date "${{ github.event.inputs.date }}" \
             --out ./data/${{ github.event.inputs.date }}
 
+      - name: Write captions.vtt
+        if: ${{ github.event.inputs.video_id != '' }}
+        run: |
+          python3 scripts/write_captions.py \
+            --video-id "${{ github.event.inputs.video_id }}" \
+            --out ./data/${{ github.event.inputs.date }} || true
+
       - name: Publish night folder to docs/s/
         run: |
           python3 - <<'PY'
           import json, os, shutil, glob
           from datetime import datetime
-
-          # Prefer explicit date from workflow input, else look for data/<date>/
           date = os.environ.get("SHOW_DATE", "").strip()
           if not date:
               candidates = sorted(glob.glob("data/20*"))
               if candidates:
                   date = os.path.basename(candidates[-1])
           if not date or date == "latest":
-              # Fall back to today's UTC date
               date = datetime.utcnow().strftime("%Y-%m-%d")
-
           src = f"data/{date}" if os.path.isdir(f"data/{date}") else "data/latest"
           if not os.path.isdir(src):
-              print(f"No data folder found at {src} — skipping publish")
+              print(f"No data folder found at {src}")
               raise SystemExit(0)
-
           dest = f"docs/s/comedy-simulator/{date}"
           os.makedirs(dest, exist_ok=True)
-
-          # Copy the pipeline outputs
           for name in ("chat.csv", "stats.json", "captions.vtt"):
               s = os.path.join(src, name)
               if os.path.exists(s):
                   shutil.copy2(s, os.path.join(dest, name))
                   print(f"copied {name}")
-
-          # Minimal night.json if missing
           night_path = os.path.join(dest, "night.json")
           if not os.path.exists(night_path):
-              night = {
-                  "show": "comedy-simulator",
-                  "date": date,
-                  "video_id": os.environ.get("VIDEO_ID", ""),
-                  "title": "Comedy Simulator",
-                  "files": {"chat": "chat.csv", "stats": "stats.json"}
-              }
+              night = {"show": "comedy-simulator", "date": date, "video_id": os.environ.get("VIDEO_ID", ""), "title": "Comedy Simulator", "files": {"chat": "chat.csv", "stats": "stats.json", "captions": "captions.vtt"}}
               with open(night_path, "w") as f:
                   json.dump(night, f, indent=2)
                   f.write("\n")
-
-          # Copy index.html template from a recent night if present
-          template = None
-          for p in sorted(glob.glob("docs/s/comedy-simulator/20*/index.html"), reverse=True):
-              if p != os.path.join(dest, "index.html"):
-                  template = p
-                  break
-          if template and not os.path.exists(os.path.join(dest, "index.html")):
-              shutil.copy2(template, os.path.join(dest, "index.html"))
-              print(f"copied index.html from {template}")
-
-          # Update nights.json
           nights_path = "docs/s/comedy-simulator/nights.json"
           try:
               nights = json.load(open(nights_path))
@@ -187,10 +117,6 @@ jobs:
               with open(nights_path, "w") as f:
                   json.dump(nights, f, indent=2)
                   f.write("\n")
-              print(f"added {date} to nights.json")
-          else:
-              print(f"{date} already in nights.json")
-
           print("publish step done")
           PY
         env:
