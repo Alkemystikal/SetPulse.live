@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Comedy Simulator — 2026-08-24</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { background: radial-gradient(circle at center, #3a1f5d 0%, #1a0f2e 45%, #000 100%); color:#f0eafa; font-family:-apple-system,sans-serif; padding:16px; }
+  a { color:#c9a6ff; }
+  h1 { color:#ff7a00; }
+  .card { background:rgba(255,255,255,0.06); border-radius:12px; padding:14px; margin:12px 0; }
+  pre { white-space:pre-wrap; font-size:.85rem; }
+</style>
+</head>
+<body>
+<a href="../">&larr; All nights</a>
+<h1>Comedy Simulator — 2026-08-24</h1>
+<p>Monitor summary archive. Full video replay requires a video_id.</p>
+<div class="card" id="stats">Loading stats…</div>
+<script>
+fetch('stats.json').then(r=>r.json()).then(j=>{
+  document.getElementById('stats').innerHTML = '<pre>'+JSON.stringify(j,null,2)+'</pre>';
+});
+</script>
+</body>
+</html>
