@@ -60,10 +60,66 @@
 <div class="wrap">
   <a class="back" href="../">&larr; All nights</a>
   <img class="logo" src="../../../assets/comedy-simulator-logo.png" alt="The Comedy Simulator">
-  <h1 id="title">Comedy Simulator — 2026-10-05</h1>
-  <p class="sub" id="dateLine">Monitor-only entry (video em4lQe0pFLM). Full chat/captions live on the 2026-09-21 archive.</p>
-  <p class="empty">Modeled on past night archive template. See <a href="../2026-09-21/">2026-09-21</a> for the complete player, lineup, and chat.</p>
-  <p>Stats: <a href="stats.json">stats.json</a></p>
+  <h1 id="title">Loading night…</h1>
+  <p class="sub" id="dateLine"></p>
+
+  <h2>Lineup</h2>
+  <div class="comics" id="comics"><p class="empty">Loading lineup…</p></div>
+
+  <h2>Search comics &amp; chat</h2>
+  <input id="searchBox" type="text" placeholder="Search a comic's name, a chat comment, or dialogue…" autocomplete="off">
+  <div id="searchStatus"></div>
+  <div id="results"></div>
+
+  <div class="playerWrap"><div id="player"></div></div>
+  <div class="nowPlaying" id="nowPlaying"></div>
+  <p class="err" id="err"></p>
+
+  <div class="summaryCard" id="summaryCard">
+    <strong id="summaryName"></strong>
+    <div class="sentRow" id="summarySent"></div>
+  </div>
+
+  <h2 id="feedTitle" style="display:none">Dialogue &amp; chat</h2>
+  <div class="feed" id="feed"></div>
 </div>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+let player = null;
+let playerReady = false;
+let currentFeedItems = [];
+let lastActiveRow = null;
+let night = null, stats = null, captionSentences = [], chatRows = [];
+function fmtT(s) { s = Math.max(0, Math.round(s)); const m = Math.floor(s / 60), sec = s % 60; return m + ':' + String(sec).padStart(2, '0'); }
+function onYouTubeIframeAPIReady() { window.__ytApiReady = true; maybeInitPlayer(); }
+function maybeInitPlayer() {
+  if (!window.__ytApiReady || !night || player) return;
+  player = new YT.Player('player', { videoId: night.video_id, playerVars: { rel: 0 }, events: { onReady: () => { playerReady = true; } } });
+}
+function seekTo(seconds) { if (!playerReady) return; player.seekTo(seconds, true); player.playVideo(); }
+function renderComics() {
+  const el = document.getElementById('comics');
+  if (!stats || !stats.performers || !stats.performers.length) { el.innerHTML = '<p class="empty">No performer data yet.</p>'; return; }
+  const ordered = stats.performers.slice().sort((a, b) => a.started_video_t - b.started_video_t);
+  el.innerHTML = ordered.map(p => {
+    const dur = Math.max(0, Math.round((p.ended_video_t - p.started_video_t) / 60));
+    return `<button type="button" class="comicBtn" data-name="${p.name.replace(/"/g, '&quot;')}">${p.name}<span class="n">${dur}m set</span></button>`;
+  }).join('');
+  el.querySelectorAll('.comicBtn').forEach(btn => { btn.onclick = () => { seekTo(ordered.find(p => p.name === btn.dataset.name).started_video_t); }; });
+}
+async function load() {
+  try {
+    const nightRes = await fetch('night.json');
+    const statsRes = await fetch('stats.json');
+    night = await nightRes.json();
+    document.getElementById('title').textContent = night.title || 'Comedy Simulator';
+    document.getElementById('dateLine').textContent = night.date || '';
+    maybeInitPlayer();
+    stats = statsRes.ok ? await statsRes.json() : { performers: [] };
+    renderComics();
+  } catch (e) { document.getElementById('err').textContent = 'Could not load: ' + e.message; }
+}
+load();
+</script>
 </body>
 </html>
