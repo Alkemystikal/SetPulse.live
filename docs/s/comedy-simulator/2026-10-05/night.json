@@ -1,13 +1,16 @@
 {
   "show": "comedy-simulator",
   "date": "2026-10-05",
-  "video_id": "em4lQe0pFLM",
-  "stream_start_wall": "2026-10-05T18:11:13",
-  "stream_start_source": "monitor",
+  "video_id": "kv_3S6zyfxE",
+  "theme": "Kill Chino",
+  "youtube_url": "https://www.youtube.com/watch?v=kv_3S6zyfxE",
+  "channel_id": "UC_47Pv7ji6eRoRggwyc25ZQ",
+  "stream_start_source": "youtube_channel_listing",
   "title": "Comedy Simulator",
   "files": {
     "chat": "chat.csv",
     "captions": "captions.vtt",
     "stats": "stats.json"
-  }
+  },
+  "note": "Video ID recovered from channel streams page. Monitor on this date was connected to the older em4lQe0pFLM stream."
 }
