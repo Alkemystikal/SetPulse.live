@@ -1,129 +1,94 @@
 {
-  "generated_at": "2026-10-12T21:04:20.878476+00:00",
+  "generated_at": "2026-10-14T16:42:49.644877+00:00",
   "window_source": "caption_cue_auto_detected",
   "comics": {
     "between_sets": {
-      "messages": 202,
-      "avg_sentiment": 0.0198,
-      "positive": 11,
-      "negative": 7,
-      "neutral": 184
-    },
-    "Chuck (auto-detected, please verify)": {
-      "messages": 33,
-      "avg_sentiment": 0.0909,
-      "positive": 4,
-      "negative": 1,
-      "neutral": 28
-    },
-    "Chino (auto-detected, please verify)": {
-      "messages": 27,
-      "avg_sentiment": 0.037,
-      "positive": 2,
-      "negative": 1,
-      "neutral": 24
-    },
-    "your host (auto-detected, please verify)": {
-      "messages": 163,
-      "avg_sentiment": 0.0123,
-      "positive": 9,
-      "negative": 7,
-      "neutral": 147
-    },
-    "Chino Leforge (auto-detected, please verify)": {
-      "messages": 195,
-      "avg_sentiment": 0.0923,
-      "positive": 26,
-      "negative": 8,
-      "neutral": 161
-    },
-    "RONDA LEE (auto-detected, please verify)": {
-      "messages": 77,
-      "avg_sentiment": 0.026,
-      "positive": 3,
-      "negative": 1,
-      "neutral": 73
-    },
-    "unknown (auto-detected, please verify)": {
-      "messages": 323,
-      "avg_sentiment": 0.0495,
-      "positive": 18,
-      "negative": 2,
-      "neutral": 303
-    },
-    "that (auto-detected, please verify)": {
-      "messages": 14,
-      "avg_sentiment": 0.0714,
-      "positive": 1,
-      "negative": 0,
-      "neutral": 13
-    },
-    "Peely (auto-detected, please verify)": {
-      "messages": 11,
-      "avg_sentiment": 0.0909,
-      "positive": 1,
-      "negative": 0,
-      "neutral": 10
-    },
-    "Gino (auto-detected, please verify)": {
-      "messages": 10,
+      "messages": 2,
       "avg_sentiment": 0.0,
       "positive": 0,
       "negative": 0,
-      "neutral": 10
+      "neutral": 2
     },
-    "Grinder so hard (auto-detected, please verify)": {
-      "messages": 146,
-      "avg_sentiment": 0.0753,
-      "positive": 14,
-      "negative": 3,
-      "neutral": 129
+    "Dub (auto-detected, please verify)": {
+      "messages": 7,
+      "avg_sentiment": 0.0,
+      "positive": 0,
+      "negative": 0,
+      "neutral": 7
+    },
+    "Skyler (auto-detected, please verify)": {
+      "messages": 386,
+      "avg_sentiment": 0.0233,
+      "positive": 16,
+      "negative": 7,
+      "neutral": 363
     },
     "Mr (auto-detected, please verify)": {
-      "messages": 158,
-      "avg_sentiment": 0.0759,
-      "positive": 14,
-      "negative": 2,
-      "neutral": 142
+      "messages": 307,
+      "avg_sentiment": 0.0228,
+      "positive": 19,
+      "negative": 12,
+      "neutral": 276
     },
-    "Semily (auto-detected, please verify)": {
+    "Shahane (auto-detected, please verify)": {
       "messages": 129,
-      "avg_sentiment": 0.0233,
-      "positive": 4,
+      "avg_sentiment": 0.0775,
+      "positive": 11,
       "negative": 1,
-      "neutral": 124
+      "neutral": 117
     },
-    "Sasha (auto-detected, please verify)": {
-      "messages": 318,
-      "avg_sentiment": 0.044,
-      "positive": 23,
-      "negative": 9,
-      "neutral": 286
+    "my good friend (auto-detected, please verify)": {
+      "messages": 14,
+      "avg_sentiment": 0.0,
+      "positive": 1,
+      "negative": 1,
+      "neutral": 12
     },
-    "Moby Dog (auto-detected, please verify)": {
-      "messages": 103,
-      "avg_sentiment": 0.0777,
-      "positive": 10,
-      "negative": 2,
-      "neutral": 91
-    },
-    "UNCLE WY (auto-detected, please verify)": {
-      "messages": 176,
-      "avg_sentiment": 0.0341,
-      "positive": 9,
+    "Uncle Wiki (auto-detected, please verify)": {
+      "messages": 116,
+      "avg_sentiment": 0.0862,
+      "positive": 13,
       "negative": 3,
-      "neutral": 164
+      "neutral": 100
     },
-    "BBC (auto-detected, please verify)": {
-      "messages": 143,
-      "avg_sentiment": 0.049,
-      "positive": 8,
-      "negative": 1,
-      "neutral": 134
+    "EA (auto-detected, please verify)": {
+      "messages": 28,
+      "avg_sentiment": 0.0,
+      "positive": 0,
+      "negative": 0,
+      "neutral": 28
+    },
+    "Chino (auto-detected, please verify)": {
+      "messages": 191,
+      "avg_sentiment": 0.1309,
+      "positive": 28,
+      "negative": 3,
+      "neutral": 160
+    },
+    "Arjuna (auto-detected, please verify)": {
+      "messages": 55,
+      "avg_sentiment": 0.1273,
+      "positive": 7,
+      "negative": 0,
+      "neutral": 48
+    },
+    "Jimbo's roommate (auto-detected, please verify)": {
+      "messages": 61,
+      "avg_sentiment": 0.1148,
+      "positive": 7,
+      "negative": 0,
+      "neutral": 54
+    },
+    "yourselves (auto-detected, please verify)": {
+      "messages": 62,
+      "avg_sentiment": 0.1129,
+      "positive": 10,
+      "negative": 3,
+      "neutral": 49
     }
   },
   "totals": {
-    "messages": 2228,
-    "comics_with_chat": 16
+    "messages": 1358,
+    "comics_with_chat": 11
   }
 }
