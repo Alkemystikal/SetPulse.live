@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-14T16:42:49.644877+00:00",
+  "generated_at": "2026-10-17T15:05:32.482006+00:00",
   "window_source": "caption_cue_auto_detected",
   "comics": {
     "between_sets": {
@@ -17,11 +17,11 @@
       "neutral": 7
     },
     "Skyler (auto-detected, please verify)": {
-      "messages": 386,
-      "avg_sentiment": 0.0233,
+      "messages": 388,
+      "avg_sentiment": 0.0232,
       "positive": 16,
       "negative": 7,
-      "neutral": 363
+      "neutral": 365
     },
     "Mr (auto-detected, please verify)": {
       "messages": 307,
@@ -88,7 +88,7 @@
     }
   },
   "totals": {
-    "messages": 1358,
+    "messages": 1360,
     "comics_with_chat": 11
   }
 }
