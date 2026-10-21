@@ -1,94 +1,115 @@
 {
-  "generated_at": "2026-10-19T18:28:38.539378+00:00",
+  "generated_at": "2026-10-21T16:44:58.457724+00:00",
   "window_source": "caption_cue_auto_detected",
   "comics": {
     "between_sets": {
-      "messages": 2,
-      "avg_sentiment": 0.0,
-      "positive": 0,
-      "negative": 0,
-      "neutral": 2
+      "messages": 55,
+      "avg_sentiment": 0.0545,
+      "positive": 4,
+      "negative": 1,
+      "neutral": 50
     },
-    "Dub (auto-detected, please verify)": {
-      "messages": 7,
-      "avg_sentiment": 0.0,
-      "positive": 0,
-      "negative": 0,
-      "neutral": 7
+    "bucket night (auto-detected, please verify)": {
+      "messages": 327,
+      "avg_sentiment": 0.0765,
+      "positive": 35,
+      "negative": 10,
+      "neutral": 282
     },
-    "Skyler (auto-detected, please verify)": {
-      "messages": 388,
-      "avg_sentiment": 0.0232,
-      "positive": 16,
+    "Morgan Tibasian (auto-detected, please verify)": {
+      "messages": 177,
+      "avg_sentiment": 0.0565,
+      "positive": 12,
+      "negative": 2,
+      "neutral": 163
+    },
+    "Japanese food (auto-detected, please verify)": {
+      "messages": 228,
+      "avg_sentiment": 0.0658,
+      "positive": 22,
       "negative": 7,
-      "neutral": 365
+      "neutral": 199
     },
-    "Mr (auto-detected, please verify)": {
-      "messages": 307,
-      "avg_sentiment": 0.0228,
-      "positive": 19,
-      "negative": 12,
-      "neutral": 276
-    },
-    "Shahane (auto-detected, please verify)": {
-      "messages": 129,
-      "avg_sentiment": 0.0775,
-      "positive": 11,
+    "Jackson Bay (auto-detected, please verify)": {
+      "messages": 122,
+      "avg_sentiment": 0.0738,
+      "positive": 10,
       "negative": 1,
-      "neutral": 117
+      "neutral": 111
     },
-    "my good friend (auto-detected, please verify)": {
-      "messages": 14,
-      "avg_sentiment": 0.0,
-      "positive": 1,
+    "KAI (auto-detected, please verify)": {
+      "messages": 147,
+      "avg_sentiment": 0.1429,
+      "positive": 23,
+      "negative": 2,
+      "neutral": 122
+    },
+    "Kai (auto-detected, please verify)": {
+      "messages": 99,
+      "avg_sentiment": 0.0505,
+      "positive": 7,
+      "negative": 2,
+      "neutral": 90
+    },
+    "Jimbo (auto-detected, please verify)": {
+      "messages": 216,
+      "avg_sentiment": 0.0324,
+      "positive": 15,
+      "negative": 8,
+      "neutral": 193
+    },
+    "Brady (auto-detected, please verify)": {
+      "messages": 87,
+      "avg_sentiment": 0.069,
+      "positive": 7,
       "negative": 1,
-      "neutral": 12
+      "neutral": 79
     },
-    "Uncle Wiki (auto-detected, please verify)": {
-      "messages": 116,
-      "avg_sentiment": 0.0862,
-      "positive": 13,
+    "Lindsay Roth (auto-detected, please verify)": {
+      "messages": 111,
+      "avg_sentiment": 0.045,
+      "positive": 8,
       "negative": 3,
       "neutral": 100
     },
-    "EA (auto-detected, please verify)": {
-      "messages": 28,
-      "avg_sentiment": 0.0,
-      "positive": 0,
-      "negative": 0,
-      "neutral": 28
+    "your host (auto-detected, please verify)": {
+      "messages": 200,
+      "avg_sentiment": 0.095,
+      "positive": 22,
+      "negative": 3,
+      "neutral": 175
+    },
+    "Jamie (auto-detected, please verify)": {
+      "messages": 251,
+      "avg_sentiment": 0.0518,
+      "positive": 17,
+      "negative": 4,
+      "neutral": 230
+    },
+    "unknown (auto-detected, please verify)": {
+      "messages": 47,
+      "avg_sentiment": 0.0213,
+      "positive": 2,
+      "negative": 1,
+      "neutral": 44
+    },
+    "Seattle in Maui (auto-detected, please verify)": {
+      "messages": 38,
+      "avg_sentiment": -0.0263,
+      "positive": 2,
+      "negative": 3,
+      "neutral": 33
     },
     "Chino (auto-detected, please verify)": {
-      "messages": 191,
-      "avg_sentiment": 0.1309,
-      "positive": 28,
-      "negative": 3,
-      "neutral": 160
-    },
-    "Arjuna (auto-detected, please verify)": {
-      "messages": 55,
-      "avg_sentiment": 0.1273,
-      "positive": 7,
-      "negative": 0,
-      "neutral": 48
-    },
-    "Jimbo's roommate (auto-detected, please verify)": {
-      "messages": 61,
-      "avg_sentiment": 0.1148,
-      "positive": 7,
-      "negative": 0,
-      "neutral": 54
-    },
-    "yourselves (auto-detected, please verify)": {
-      "messages": 62,
-      "avg_sentiment": 0.1129,
-      "positive": 10,
-      "negative": 3,
-      "neutral": 49
+      "messages": 146,
+      "avg_sentiment": 0.0411,
+      "positive": 8,
+      "negative": 2,
+      "neutral": 136
     }
   },
   "totals": {
-    "messages": 1360,
-    "comics_with_chat": 11
+    "messages": 2251,
+    "comics_with_chat": 14
   }
 }
