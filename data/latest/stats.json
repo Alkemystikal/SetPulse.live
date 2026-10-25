@@ -1,27 +1,55 @@
 {
-  "generated_at": "2026-10-24T15:31:38.442909+00:00",
+  "generated_at": "2026-10-25T15:40:11.424246+00:00",
   "window_source": "caption_cue_auto_detected",
   "comics": {
     "between_sets": {
-      "messages": 55,
-      "avg_sentiment": 0.0545,
+      "messages": 56,
+      "avg_sentiment": 0.0536,
       "positive": 4,
       "negative": 1,
-      "neutral": 50
+      "neutral": 51
     },
     "bucket night (auto-detected, please verify)": {
-      "messages": 327,
-      "avg_sentiment": 0.0765,
-      "positive": 35,
-      "negative": 10,
-      "neutral": 282
+      "messages": 53,
+      "avg_sentiment": 0.1132,
+      "positive": 7,
+      "negative": 1,
+      "neutral": 45
     },
-    "Morgan Tibasian (auto-detected, please verify)": {
-      "messages": 177,
-      "avg_sentiment": 0.0565,
+    "RONDA HANSON (auto-detected, please verify)": {
+      "messages": 89,
+      "avg_sentiment": 0.0562,
+      "positive": 11,
+      "negative": 6,
+      "neutral": 72
+    },
+    "HONUMAN (auto-detected, please verify)": {
+      "messages": 99,
+      "avg_sentiment": 0.101,
+      "positive": 11,
+      "negative": 1,
+      "neutral": 87
+    },
+    "BASHAR (auto-detected, please verify)": {
+      "messages": 62,
+      "avg_sentiment": 0.0484,
+      "positive": 4,
+      "negative": 1,
+      "neutral": 57
+    },
+    "Bashar (auto-detected, please verify)": {
+      "messages": 23,
+      "avg_sentiment": 0.0435,
+      "positive": 2,
+      "negative": 1,
+      "neutral": 20
+    },
+    "MORGAN (auto-detected, please verify)": {
+      "messages": 178,
+      "avg_sentiment": 0.0562,
       "positive": 12,
       "negative": 2,
-      "neutral": 163
+      "neutral": 164
     },
     "Japanese food (auto-detected, please verify)": {
       "messages": 228,
@@ -30,12 +58,12 @@
       "negative": 7,
       "neutral": 199
     },
-    "Jackson Bay (auto-detected, please verify)": {
-      "messages": 122,
-      "avg_sentiment": 0.0738,
+    "JACKSON BAYBIE (auto-detected, please verify)": {
+      "messages": 121,
+      "avg_sentiment": 0.0744,
       "positive": 10,
       "negative": 1,
-      "neutral": 111
+      "neutral": 110
     },
     "KAI (auto-detected, please verify)": {
       "messages": 147,
@@ -51,40 +79,61 @@
       "negative": 2,
       "neutral": 90
     },
-    "Jimbo (auto-detected, please verify)": {
+    "JIMBO (auto-detected, please verify)": {
       "messages": 216,
       "avg_sentiment": 0.0324,
       "positive": 15,
       "negative": 8,
       "neutral": 193
     },
-    "Brady (auto-detected, please verify)": {
-      "messages": 87,
-      "avg_sentiment": 0.069,
-      "positive": 7,
+    "Braden (auto-detected, please verify)": {
+      "messages": 79,
+      "avg_sentiment": 0.0506,
+      "positive": 5,
       "negative": 1,
-      "neutral": 79
+      "neutral": 73
     },
-    "Lindsay Roth (auto-detected, please verify)": {
-      "messages": 111,
-      "avg_sentiment": 0.045,
-      "positive": 8,
+    "EARL (auto-detected, please verify)": {
+      "messages": 118,
+      "avg_sentiment": 0.0508,
+      "positive": 9,
       "negative": 3,
-      "neutral": 100
+      "neutral": 106
     },
     "your host (auto-detected, please verify)": {
-      "messages": 200,
-      "avg_sentiment": 0.095,
-      "positive": 22,
-      "negative": 3,
-      "neutral": 175
+      "messages": 107,
+      "avg_sentiment": 0.0935,
+      "positive": 12,
+      "negative": 2,
+      "neutral": 93
     },
-    "Jamie (auto-detected, please verify)": {
-      "messages": 251,
-      "avg_sentiment": 0.0518,
-      "positive": 17,
+    "Mr (auto-detected, please verify)": {
+      "messages": 85,
+      "avg_sentiment": 0.1176,
+      "positive": 11,
+      "negative": 1,
+      "neutral": 73
+    },
+    "P WAYNE (auto-detected, please verify)": {
+      "messages": 12,
+      "avg_sentiment": 0.0,
+      "positive": 0,
+      "negative": 0,
+      "neutral": 12
+    },
+    "any first timers (auto-detected, please verify)": {
+      "messages": 70,
+      "avg_sentiment": 0.1,
+      "positive": 7,
+      "negative": 0,
+      "neutral": 63
+    },
+    "JAMIE (auto-detected, please verify)": {
+      "messages": 178,
+      "avg_sentiment": 0.0337,
+      "positive": 10,
       "negative": 4,
-      "neutral": 230
+      "neutral": 164
     },
     "unknown (auto-detected, please verify)": {
       "messages": 47,
@@ -93,7 +142,7 @@
       "negative": 1,
       "neutral": 44
     },
-    "Seattle in Maui (auto-detected, please verify)": {
+    "Seattle (auto-detected, please verify)": {
       "messages": 38,
       "avg_sentiment": -0.0263,
       "positive": 2,
@@ -110,6 +159,6 @@
   },
   "totals": {
     "messages": 2251,
-    "comics_with_chat": 14
+    "comics_with_chat": 21
   }
 }
