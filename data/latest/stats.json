@@ -1,164 +1,122 @@
 {
-  "generated_at": "2026-10-26T18:21:21.493867+00:00",
+  "generated_at": "2026-10-27T17:36:04.907468+00:00",
   "window_source": "caption_cue_auto_detected",
   "comics": {
     "between_sets": {
-      "messages": 56,
-      "avg_sentiment": 0.0536,
-      "positive": 4,
-      "negative": 1,
-      "neutral": 51
-    },
-    "bucket night (auto-detected, please verify)": {
-      "messages": 53,
-      "avg_sentiment": 0.1132,
-      "positive": 7,
-      "negative": 1,
-      "neutral": 45
-    },
-    "RONDA HANSON (auto-detected, please verify)": {
-      "messages": 89,
-      "avg_sentiment": 0.0562,
-      "positive": 11,
-      "negative": 6,
-      "neutral": 72
-    },
-    "HONUMAN (auto-detected, please verify)": {
-      "messages": 99,
-      "avg_sentiment": 0.101,
-      "positive": 11,
-      "negative": 1,
-      "neutral": 87
-    },
-    "BASHAR (auto-detected, please verify)": {
-      "messages": 62,
-      "avg_sentiment": 0.0484,
-      "positive": 4,
-      "negative": 1,
-      "neutral": 57
-    },
-    "Bashar (auto-detected, please verify)": {
-      "messages": 23,
-      "avg_sentiment": 0.0435,
-      "positive": 2,
-      "negative": 1,
-      "neutral": 20
-    },
-    "MORGAN (auto-detected, please verify)": {
-      "messages": 178,
-      "avg_sentiment": 0.0562,
-      "positive": 12,
-      "negative": 2,
-      "neutral": 164
-    },
-    "Japanese food (auto-detected, please verify)": {
-      "messages": 228,
-      "avg_sentiment": 0.0658,
-      "positive": 22,
-      "negative": 7,
-      "neutral": 199
-    },
-    "JACKSON BAYBIE (auto-detected, please verify)": {
-      "messages": 121,
-      "avg_sentiment": 0.0744,
-      "positive": 10,
-      "negative": 1,
-      "neutral": 110
-    },
-    "KAI (auto-detected, please verify)": {
-      "messages": 147,
-      "avg_sentiment": 0.1429,
-      "positive": 23,
-      "negative": 2,
-      "neutral": 122
-    },
-    "Kai (auto-detected, please verify)": {
-      "messages": 99,
-      "avg_sentiment": 0.0505,
-      "positive": 7,
-      "negative": 2,
-      "neutral": 90
-    },
-    "JIMBO (auto-detected, please verify)": {
-      "messages": 216,
-      "avg_sentiment": 0.0324,
-      "positive": 15,
-      "negative": 8,
-      "neutral": 193
-    },
-    "Braden (auto-detected, please verify)": {
-      "messages": 79,
-      "avg_sentiment": 0.0506,
-      "positive": 5,
-      "negative": 1,
-      "neutral": 73
-    },
-    "EARL (auto-detected, please verify)": {
-      "messages": 118,
-      "avg_sentiment": 0.0508,
-      "positive": 9,
-      "negative": 3,
-      "neutral": 106
-    },
-    "your host (auto-detected, please verify)": {
-      "messages": 107,
-      "avg_sentiment": 0.0935,
-      "positive": 12,
-      "negative": 2,
-      "neutral": 93
-    },
-    "Mr (auto-detected, please verify)": {
-      "messages": 85,
-      "avg_sentiment": 0.1176,
-      "positive": 11,
-      "negative": 1,
-      "neutral": 73
-    },
-    "P WAYNE (auto-detected, please verify)": {
-      "messages": 12,
+      "messages": 13,
       "avg_sentiment": 0.0,
       "positive": 0,
       "negative": 0,
-      "neutral": 12
+      "neutral": 13
     },
-    "any first timers (auto-detected, please verify)": {
-      "messages": 70,
-      "avg_sentiment": 0.1,
-      "positive": 7,
+    "Mr (auto-detected, please verify)": {
+      "messages": 29,
+      "avg_sentiment": 0.1379,
+      "positive": 4,
       "negative": 0,
-      "neutral": 63
+      "neutral": 25
     },
-    "JAMIE (auto-detected, please verify)": {
-      "messages": 178,
-      "avg_sentiment": 0.0337,
-      "positive": 10,
-      "negative": 4,
-      "neutral": 164
+    "yourselves (auto-detected, please verify)": {
+      "messages": 9,
+      "avg_sentiment": 0.1111,
+      "positive": 1,
+      "negative": 0,
+      "neutral": 8
     },
     "unknown (auto-detected, please verify)": {
-      "messages": 47,
-      "avg_sentiment": 0.0213,
-      "positive": 2,
-      "negative": 1,
-      "neutral": 44
-    },
-    "Seattle (auto-detected, please verify)": {
-      "messages": 38,
-      "avg_sentiment": -0.0263,
-      "positive": 2,
-      "negative": 3,
-      "neutral": 33
-    },
-    "Chino (auto-detected, please verify)": {
-      "messages": 146,
-      "avg_sentiment": 0.0411,
-      "positive": 8,
-      "negative": 2,
+      "messages": 152,
+      "avg_sentiment": 0.0526,
+      "positive": 12,
+      "negative": 4,
       "neutral": 136
+    },
+    "my buddy Bashar (auto-detected, please verify)": {
+      "messages": 18,
+      "avg_sentiment": 0.1111,
+      "positive": 2,
+      "negative": 0,
+      "neutral": 16
+    },
+    "your stuff (auto-detected, please verify)": {
+      "messages": 112,
+      "avg_sentiment": 0.0089,
+      "positive": 6,
+      "negative": 5,
+      "neutral": 101
+    },
+    "as big as (auto-detected, please verify)": {
+      "messages": 13,
+      "avg_sentiment": 0.0,
+      "positive": 0,
+      "negative": 0,
+      "neutral": 13
+    },
+    "Pa Bay Coffee (auto-detected, please verify)": {
+      "messages": 56,
+      "avg_sentiment": 0.125,
+      "positive": 7,
+      "negative": 0,
+      "neutral": 49
+    },
+    "my trippy girlfriend (auto-detected, please verify)": {
+      "messages": 28,
+      "avg_sentiment": -0.0357,
+      "positive": 1,
+      "negative": 2,
+      "neutral": 25
+    },
+    "Katie (auto-detected, please verify)": {
+      "messages": 139,
+      "avg_sentiment": 0.0576,
+      "positive": 10,
+      "negative": 2,
+      "neutral": 127
+    },
+    "Ed (auto-detected, please verify)": {
+      "messages": 108,
+      "avg_sentiment": 0.0648,
+      "positive": 10,
+      "negative": 3,
+      "neutral": 95
+    },
+    "Earl (auto-detected, please verify)": {
+      "messages": 169,
+      "avg_sentiment": -0.0118,
+      "positive": 5,
+      "negative": 7,
+      "neutral": 157
+    },
+    "Chino Lord talking (auto-detected, please verify)": {
+      "messages": 79,
+      "avg_sentiment": 0.0253,
+      "positive": 5,
+      "negative": 3,
+      "neutral": 71
+    },
+    "Jan CBS Cobra (auto-detected, please verify)": {
+      "messages": 177,
+      "avg_sentiment": 0.0339,
+      "positive": 9,
+      "negative": 3,
+      "neutral": 165
+    },
+    "Jamie (auto-detected, please verify)": {
+      "messages": 100,
+      "avg_sentiment": 0.1,
+      "positive": 11,
+      "negative": 1,
+      "neutral": 88
+    },
+    "Garrett (auto-detected, please verify)": {
+      "messages": 18,
+      "avg_sentiment": 0.1667,
+      "positive": 3,
+      "negative": 0,
+      "neutral": 15
     }
   },
   "totals": {
-    "messages": 2251,
-    "comics_with_chat": 21
+    "messages": 1220,
+    "comics_with_chat": 15
   }
 }
