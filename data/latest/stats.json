@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T17:36:04.907468+00:00",
+  "generated_at": "2026-10-28T17:58:03.490710+00:00",
   "window_source": "caption_cue_auto_detected",
   "comics": {
     "between_sets": {
@@ -24,11 +24,11 @@
       "neutral": 8
     },
     "unknown (auto-detected, please verify)": {
-      "messages": 152,
-      "avg_sentiment": 0.0526,
+      "messages": 150,
+      "avg_sentiment": 0.0533,
       "positive": 12,
       "negative": 4,
-      "neutral": 136
+      "neutral": 134
     },
     "my buddy Bashar (auto-detected, please verify)": {
       "messages": 18,
@@ -38,11 +38,11 @@
       "neutral": 16
     },
     "your stuff (auto-detected, please verify)": {
-      "messages": 112,
-      "avg_sentiment": 0.0089,
+      "messages": 111,
+      "avg_sentiment": 0.009,
       "positive": 6,
       "negative": 5,
-      "neutral": 101
+      "neutral": 100
     },
     "as big as (auto-detected, please verify)": {
       "messages": 13,
@@ -52,11 +52,11 @@
       "neutral": 13
     },
     "Pa Bay Coffee (auto-detected, please verify)": {
-      "messages": 56,
-      "avg_sentiment": 0.125,
+      "messages": 55,
+      "avg_sentiment": 0.1273,
       "positive": 7,
       "negative": 0,
-      "neutral": 49
+      "neutral": 48
     },
     "my trippy girlfriend (auto-detected, please verify)": {
       "messages": 28,
@@ -116,7 +116,7 @@
     }
   },
   "totals": {
-    "messages": 1220,
+    "messages": 1216,
     "comics_with_chat": 15
   }
 }
