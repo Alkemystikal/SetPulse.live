@@ -1,122 +1,101 @@
 {
-  "generated_at": "2026-11-02T21:29:11.781105+00:00",
+  "generated_at": "2026-11-04T19:27:37.443530+00:00",
   "window_source": "caption_cue_auto_detected",
   "comics": {
     "between_sets": {
-      "messages": 13,
-      "avg_sentiment": 0.0,
-      "positive": 0,
-      "negative": 0,
-      "neutral": 13
+      "messages": 108,
+      "avg_sentiment": 0.1296,
+      "positive": 15,
+      "negative": 1,
+      "neutral": 92
     },
     "Mr (auto-detected, please verify)": {
-      "messages": 29,
-      "avg_sentiment": 0.1379,
-      "positive": 4,
-      "negative": 0,
-      "neutral": 25
+      "messages": 119,
+      "avg_sentiment": 0.1008,
+      "positive": 15,
+      "negative": 3,
+      "neutral": 101
     },
-    "yourselves (auto-detected, please verify)": {
-      "messages": 9,
-      "avg_sentiment": 0.1111,
-      "positive": 1,
-      "negative": 0,
-      "neutral": 8
-    },
-    "unknown (auto-detected, please verify)": {
-      "messages": 150,
-      "avg_sentiment": 0.0533,
-      "positive": 12,
-      "negative": 4,
-      "neutral": 134
-    },
-    "my buddy Bashar (auto-detected, please verify)": {
-      "messages": 18,
-      "avg_sentiment": 0.1111,
+    "from (auto-detected, please verify)": {
+      "messages": 46,
+      "avg_sentiment": 0.0435,
       "positive": 2,
       "negative": 0,
-      "neutral": 16
+      "neutral": 44
     },
-    "your stuff (auto-detected, please verify)": {
-      "messages": 111,
-      "avg_sentiment": 0.009,
-      "positive": 6,
-      "negative": 5,
-      "neutral": 100
+    "Jackson Babby (auto-detected, please verify)": {
+      "messages": 53,
+      "avg_sentiment": 0.1321,
+      "positive": 7,
+      "negative": 0,
+      "neutral": 46
     },
-    "as big as (auto-detected, please verify)": {
-      "messages": 13,
+    "this guy over (auto-detected, please verify)": {
+      "messages": 6,
       "avg_sentiment": 0.0,
       "positive": 0,
       "negative": 0,
-      "neutral": 13
+      "neutral": 6
     },
-    "Pa Bay Coffee (auto-detected, please verify)": {
-      "messages": 55,
-      "avg_sentiment": 0.1273,
-      "positive": 7,
+    "Joel Huins (auto-detected, please verify)": {
+      "messages": 42,
+      "avg_sentiment": 0.1429,
+      "positive": 6,
       "negative": 0,
-      "neutral": 48
+      "neutral": 36
     },
-    "my trippy girlfriend (auto-detected, please verify)": {
-      "messages": 28,
-      "avg_sentiment": -0.0357,
-      "positive": 1,
-      "negative": 2,
-      "neutral": 25
+    "your host (auto-detected, please verify)": {
+      "messages": 88,
+      "avg_sentiment": 0.0909,
+      "positive": 13,
+      "negative": 5,
+      "neutral": 70
     },
-    "Katie (auto-detected, please verify)": {
-      "messages": 139,
-      "avg_sentiment": 0.0576,
+    "Chino (auto-detected, please verify)": {
+      "messages": 75,
+      "avg_sentiment": 0.1067,
       "positive": 10,
       "negative": 2,
-      "neutral": 127
+      "neutral": 63
     },
-    "Ed (auto-detected, please verify)": {
-      "messages": 108,
-      "avg_sentiment": 0.0648,
-      "positive": 10,
-      "negative": 3,
-      "neutral": 95
+    "this man (auto-detected, please verify)": {
+      "messages": 51,
+      "avg_sentiment": 0.0784,
+      "positive": 4,
+      "negative": 0,
+      "neutral": 47
     },
-    "Earl (auto-detected, please verify)": {
-      "messages": 169,
-      "avg_sentiment": -0.0118,
-      "positive": 5,
-      "negative": 7,
-      "neutral": 157
-    },
-    "Chino Lord talking (auto-detected, please verify)": {
-      "messages": 79,
-      "avg_sentiment": 0.0253,
-      "positive": 5,
-      "negative": 3,
-      "neutral": 71
-    },
-    "Jan CBS Cobra (auto-detected, please verify)": {
-      "messages": 177,
-      "avg_sentiment": 0.0339,
-      "positive": 9,
-      "negative": 3,
-      "neutral": 165
-    },
-    "Jamie (auto-detected, please verify)": {
-      "messages": 100,
-      "avg_sentiment": 0.1,
-      "positive": 11,
+    "Tyson (auto-detected, please verify)": {
+      "messages": 41,
+      "avg_sentiment": 0.0732,
+      "positive": 4,
       "negative": 1,
-      "neutral": 88
+      "neutral": 36
     },
-    "Garrett (auto-detected, please verify)": {
-      "messages": 18,
-      "avg_sentiment": 0.1667,
-      "positive": 3,
-      "negative": 0,
-      "neutral": 15
+    "unknown (auto-detected, please verify)": {
+      "messages": 98,
+      "avg_sentiment": 0.0612,
+      "positive": 7,
+      "negative": 1,
+      "neutral": 90
+    },
+    "that (auto-detected, please verify)": {
+      "messages": 49,
+      "avg_sentiment": 0.102,
+      "positive": 7,
+      "negative": 2,
+      "neutral": 40
+    },
+    "Eddie V (auto-detected, please verify)": {
+      "messages": 76,
+      "avg_sentiment": 0.1711,
+      "positive": 14,
+      "negative": 1,
+      "neutral": 61
     }
   },
   "totals": {
-    "messages": 1216,
-    "comics_with_chat": 15
+    "messages": 852,
+    "comics_with_chat": 12
   }
 }
