@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-11-06T18:58:34.663266+00:00",
+  "generated_at": "2026-11-08T17:41:38.105309+00:00",
   "window_source": "caption_cue_auto_detected",
   "comics": {
     "between_sets": {
-      "messages": 108,
-      "avg_sentiment": 0.1296,
+      "messages": 107,
+      "avg_sentiment": 0.1308,
       "positive": 15,
       "negative": 1,
-      "neutral": 92
+      "neutral": 91
     },
     "Mr (auto-detected, please verify)": {
-      "messages": 119,
-      "avg_sentiment": 0.1008,
+      "messages": 118,
+      "avg_sentiment": 0.1017,
       "positive": 15,
       "negative": 3,
-      "neutral": 101
+      "neutral": 100
     },
     "from (auto-detected, please verify)": {
       "messages": 46,
@@ -45,11 +45,11 @@
       "neutral": 36
     },
     "your host (auto-detected, please verify)": {
-      "messages": 88,
-      "avg_sentiment": 0.0909,
+      "messages": 87,
+      "avg_sentiment": 0.092,
       "positive": 13,
       "negative": 5,
-      "neutral": 70
+      "neutral": 69
     },
     "Chino (auto-detected, please verify)": {
       "messages": 75,
@@ -87,15 +87,15 @@
       "neutral": 40
     },
     "Eddie V (auto-detected, please verify)": {
-      "messages": 76,
-      "avg_sentiment": 0.1711,
+      "messages": 75,
+      "avg_sentiment": 0.1733,
       "positive": 14,
       "negative": 1,
-      "neutral": 61
+      "neutral": 60
     }
   },
   "totals": {
-    "messages": 852,
+    "messages": 848,
     "comics_with_chat": 12
   }
 }
