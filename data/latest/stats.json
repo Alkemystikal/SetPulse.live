@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12T19:39:27.233586+00:00",
+  "generated_at": "2026-11-13T19:18:00.284626+00:00",
   "window_source": "caption_cue_auto_detected",
   "comics": {
     "between_sets": {
@@ -30,33 +30,33 @@
       "negative": 6,
       "neutral": 170
     },
-    "Chino (auto-detected, please verify)": {
+    "Chino who is (auto-detected, please verify)": {
       "messages": 11,
       "avg_sentiment": 0.0,
       "positive": 0,
       "negative": 0,
       "neutral": 11
     },
-    "JACKSON BAY (auto-detected, please verify)": {
+    "JACKSON BABAI (auto-detected, please verify)": {
       "messages": 65,
       "avg_sentiment": 0.0462,
       "positive": 4,
       "negative": 1,
       "neutral": 60
     },
-    "MISS RHONDA LEE (auto-detected, please verify)": {
-      "messages": 58,
-      "avg_sentiment": 0.0172,
-      "positive": 3,
-      "negative": 2,
-      "neutral": 53
-    },
-    "Ronda Lee Hansen (auto-detected, please verify)": {
-      "messages": 42,
-      "avg_sentiment": 0.0714,
+    "MISS RONDA LEE (auto-detected, please verify)": {
+      "messages": 64,
+      "avg_sentiment": 0.0312,
       "positive": 4,
-      "negative": 1,
-      "neutral": 37
+      "negative": 2,
+      "neutral": 58
+    },
+    "Mr (auto-detected, please verify)": {
+      "messages": 140,
+      "avg_sentiment": 0.1,
+      "positive": 16,
+      "negative": 2,
+      "neutral": 122
     },
     "Rick (auto-detected, please verify)": {
       "messages": 16,
@@ -72,26 +72,26 @@
       "negative": 1,
       "neutral": 65
     },
-    "your host (auto-detected, please verify)": {
-      "messages": 215,
-      "avg_sentiment": 0.0651,
-      "positive": 16,
-      "negative": 2,
-      "neutral": 197
+    "YOUR HOST (auto-detected, please verify)": {
+      "messages": 61,
+      "avg_sentiment": 0.0164,
+      "positive": 2,
+      "negative": 1,
+      "neutral": 58
+    },
+    "your host Gino (auto-detected, please verify)": {
+      "messages": 154,
+      "avg_sentiment": 0.0844,
+      "positive": 14,
+      "negative": 1,
+      "neutral": 139
     },
     "ladies (auto-detected, please verify)": {
-      "messages": 212,
-      "avg_sentiment": 0.0613,
-      "positive": 19,
-      "negative": 6,
-      "neutral": 187
-    },
-    "Uncle Mike (auto-detected, please verify)": {
-      "messages": 23,
-      "avg_sentiment": 0.0435,
-      "positive": 1,
-      "negative": 0,
-      "neutral": 22
+      "messages": 131,
+      "avg_sentiment": 0.0153,
+      "positive": 7,
+      "negative": 5,
+      "neutral": 119
     }
   },
   "totals": {
